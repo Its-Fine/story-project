@@ -1,5 +1,5 @@
-const API_BASE_URL = 'http://localhost:8000/api/v1';
-export const AUTH_BASE_URL = 'http://localhost:8001/api/v1';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
+export const AUTH_BASE_URL = process.env.REACT_APP_AUTH_URL || 'http://localhost:8001/api/v1';
 
 interface ApiRequestConfig {
   api: string;
