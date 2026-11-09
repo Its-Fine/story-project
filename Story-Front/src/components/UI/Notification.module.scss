@@ -1,0 +1,46 @@
+@import '../../styles/variables.scss';
+
+.notification {
+  position: fixed;
+  top: 30px;
+  right: 30px;
+  padding: 16px 30px;
+  background: white;
+  border-left: 6px solid $primary;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 500;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  z-index: 1000;
+  display: none;
+  animation: slideIn 0.3s ease;
+
+  &.success {
+    border-left-color: $success;
+  }
+
+  &.error {
+    border-left-color: $error;
+  }
+
+  &.show {
+    display: block;
+  }
+
+  @media (max-width: $breakpoint-mobile) {
+    left: 20px;
+    right: 20px;
+    text-align: center;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}

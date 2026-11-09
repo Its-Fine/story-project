@@ -1,0 +1,24 @@
+server:
+  port: 8001
+
+spring:
+  application:
+    name: story-auth
+
+  datasource:
+    url: jdbc:postgresql://${STORY_DATASOURCE_HOST:localhost}:5432/${POSTGRES_DB:story_db}
+    username: ${POSTGRES_USER:story_user}
+    password: ${POSTGRES_PASSWORD:story_password}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: update
+      format_sql: true
+
+story:
+  jwt:
+    secret: ${STORY_JWT_SECRET:change-me-in-production-use-base64-encoded-secret}
+    expiration-access: 15m
+    expiration-refresh: 1d

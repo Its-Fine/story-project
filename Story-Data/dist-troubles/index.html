@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Технические работы</title>
+    <meta name="description" content="Сайт временно недоступен. Проводятся плановые технические работы.">
+    <meta name="robots" content="noindex, nofollow">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            background: linear-gradient(145deg, #0b1120 0%, #111827 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+            color: #e2e8f0;
+        }
+
+        .maintenance-card {
+            max-width: 620px;
+            width: 100%;
+            background: rgba(17, 24, 39, 0.75);
+            backdrop-filter: blur(8px);
+            border-radius: 3rem;
+            padding: 2.5rem 2rem;
+            box-shadow: 0 25px 45px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(71, 85, 105, 0.3);
+            text-align: center;
+            transition: all 0.2s ease;
+        }
+
+        .icon-tools {
+            font-size: 4.8rem;
+            margin-bottom: 1.2rem;
+            display: inline-block;
+            filter: drop-shadow(0 8px 12px rgba(0,0,0,0.3));
+            animation: gentle-spin 6s infinite ease-in-out;
+        }
+
+        @keyframes gentle-spin {
+            0% { transform: rotate(0deg) scale(1); }
+            50% { transform: rotate(12deg) scale(1.05); }
+            100% { transform: rotate(0deg) scale(1); }
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            background: linear-gradient(135deg, #F9FAFB, #CBD5E1);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            margin-bottom: 0.75rem;
+        }
+
+        .badge {
+            display: inline-block;
+            background: rgba(255, 215, 0, 0.15);
+            backdrop-filter: blur(4px);
+            padding: 0.3rem 1rem;
+            border-radius: 60px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: #FFD966;
+            border: 0.5px solid rgba(255, 217, 0, 0.3);
+            margin-bottom: 1.5rem;
+        }
+
+        .message {
+            font-size: 1.1rem;
+            line-height: 1.5;
+            color: #cbd5e1;
+            margin-bottom: 1.8rem;
+        }
+
+        .message p + p {
+            margin-top: 0.75rem;
+        }
+
+        .info-note {
+            background: rgba(0, 0, 0, 0.35);
+            border-radius: 1.5rem;
+            padding: 1rem 1.2rem;
+            margin: 1.2rem 0 1rem;
+            font-size: 0.9rem;
+            color: #a0afc0;
+            border-left: 3px solid #ffb347;
+            text-align: left;
+        }
+
+        footer {
+            margin-top: 2rem;
+            font-size: 0.7rem;
+            color: #4b5563;
+            border-top: 0.5px solid #1e293b;
+            padding-top: 1.4rem;
+        }
+
+        @media (max-width: 480px) {
+            .maintenance-card {
+                padding: 1.8rem 1.3rem;
+            }
+            h1 {
+                font-size: 1.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="maintenance-card">
+    <div class="icon-tools">
+        ⚙️🔧
+    </div>
+    <h1>Технические работы</h1>
+    <div class="badge">👨‍🔧 Плановое обслуживание</div>
+    <div class="message">
+        <p>✨ Сайт временно недоступен. Мы проводим важные обновления, чтобы сделать сервис ещё лучше и стабильнее.</p>
+        <p>⚡ Приносим извинения за временные неудобства. Скоро всё заработает в полную силу.</p>
+    </div>
+    <div class="info-note">
+        🔄 Ведутся профилактические работы на сервере. Пожалуйста, зайдите немного позже.
+    </div>
+    <footer>
+        Мы вернёмся обновлёнными 🚀 • Команда разработки
+    </footer>
+</div>
+</body>
+</html>

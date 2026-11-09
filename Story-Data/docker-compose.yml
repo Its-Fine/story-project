@@ -1,0 +1,75 @@
+services:
+  postgresql:
+    image: bitnami/postgresql:latest
+    container_name: story-postgresql
+    ports:
+      - "5432:5432"
+    env_file:
+      - ./environments/${ENVIRONMENT}
+    volumes:
+      - ./services/postgresql:/docker-entrypoint-initdb.d:ro
+      - story-postgresql-volume:/bitnami/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: always
+
+  minio:
+    image: minio/minio
+    container_name: story-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    env_file:
+      - ./environments/${ENVIRONMENT}
+    volumes:
+      - story-minio-volume:/data
+    command: server /data --console-address ":9001"
+    restart: always
+
+  minio-init:
+    image: minio/mc
+    container_name: story-minio-init
+    env_file:
+      - ./environments/${ENVIRONMENT}
+    depends_on:
+      - minio
+    entrypoint: > 
+      /bin/sh -c "sleep 5; 
+      mc alias set local http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD}; 
+      mc ls local/${MINIO_MC_BUCKET} || mc mb local/${MINIO_MC_BUCKET}; 
+      exit 0;"
+
+  spring-auth:
+    build: ../story-auth
+    container_name: story-spring-auth
+    ports:
+      - "8001:8001"
+    env_file:
+      - ./environments/${ENVIRONMENT}
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    restart: always
+
+  spring:
+    build: ../story-back
+    container_name: story-spring
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./environments/${ENVIRONMENT}
+    depends_on:
+      postgresql:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    restart: always
+
+volumes:
+  story-postgresql-volume:
+    name: story-postgresql-volume
+  story-minio-volume:
+    name: story-minio-volume

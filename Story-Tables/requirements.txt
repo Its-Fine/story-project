@@ -1,0 +1,6 @@
+openpyxl~=3.1.5
+pillow~=12.2.0
+requests~=2.34.0
+python-dateutil~=2.9.0.post0
+docxtpl
+docx2pdf

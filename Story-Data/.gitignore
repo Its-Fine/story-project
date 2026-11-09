@@ -1,0 +1,6 @@
+.vs/*
+
+docker-env/*.env
+!docker-env/test.env
+
+*.jar

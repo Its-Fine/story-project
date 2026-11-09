@@ -1,0 +1,64 @@
+server:
+  port: 8000
+
+spring:
+  application:
+    name: story
+
+  datasource:
+    url: jdbc:postgresql://${STORY_DATASOURCE_HOST:localhost}:5432/${POSTGRES_DB:story}
+    username: ${POSTGRES_USER:postgres}
+    password: ${POSTGRES_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 300000
+      max-lifetime: 600000
+
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  servlet:
+    multipart:
+      max-file-size: ${STORY_WORK_SIZE:20MB}
+      max-request-size: ${STORY_WORK_SIZE:20MB}
+
+story:
+  closed: false
+
+  jwt:
+    secret: ${STORY_JWT_SECRET:change-me-in-production-use-base64-encoded-secret}
+    expiration-access: 15m
+    expiration-refresh: 1d
+
+  admin:
+    email: ${STORY_ADMIN_USERNAME:admin@example.com}
+    password: ${STORY_ADMIN_PASSWORD:admin_password}
+
+  contest:
+    name-size: 255
+    application-count: 2
+
+  application:
+    size: ${STORY_APPLICATION_SIZE:${STORY_WORK_SIZE:20MB}}
+    name-size: 255
+    count: -1
+    work-count: 10
+
+  work:
+    size: ${STORY_WORK_SIZE:20MB}
+    name-size: 255
+
+  minio:
+    url: http://${STORY_MINIO_HOST:localhost}:9000
+    access-key: ${MINIO_ROOT_USER:minio_user}
+    secret-key: ${MINIO_ROOT_PASSWORD:minio_password}
+    bucket: ${MINIO_MC_BUCKET:story}
