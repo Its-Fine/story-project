@@ -6,7 +6,7 @@ spring:
     name: story-auth
 
   datasource:
-    url: jdbc:postgresql://${STORY_DATASOURCE_HOST:localhost}:5432/${POSTGRES_DB:story_db}
+    url: jdbc:postgresql://${STORY_DATASOURCE_HOST:postgresql}:5432/${POSTGRES_DB:story_db}
     username: ${POSTGRES_USER:story_user}
     password: ${POSTGRES_PASSWORD:story_password}
     driver-class-name: org.postgresql.Driver
@@ -22,3 +22,5 @@ story:
     secret: ${STORY_JWT_SECRET:change-me-in-production-use-base64-encoded-secret}
     expiration-access: 15m
     expiration-refresh: 1d
+  cookie:
+    secure: ${STORY_COOKIE_SECURE:false}

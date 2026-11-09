@@ -1,4 +1,9 @@
--- init.sql
+* text=auto eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.png binary
+*.jpg binary
+*.jar binary-- init.sql
 -- Создание таблиц для JPA сущностей
 
 -- Таблица users

@@ -1,6 +1,7 @@
 package com.example.story.auth.service;
 
-import com.example.story.auth.dto.AuthRequestDto;
+import com.example.story.auth.dto.LoginRequestDto;
+import com.example.story.auth.dto.SignupRequestDto;
 import com.example.story.auth.dto.AuthResponseDto;
 import com.example.story.auth.entity.AuthUser;
 import com.example.story.auth.repository.AuthUserRepository;
@@ -24,7 +25,7 @@ public class AuthService {
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
 
-    public Map<String, String> signup(AuthRequestDto dto) {
+    public Map<String, String> signup(SignupRequestDto dto) {
         if (!Boolean.TRUE.equals(dto.getConsent())) {
             throw new RuntimeException("Consent is required");
         }
@@ -55,7 +56,7 @@ public class AuthService {
         );
     }
 
-    public Map<String, String> login(AuthRequestDto dto) {
+    public Map<String, String> login(LoginRequestDto dto) {
         AuthUser user = authUserRepository.findByEmail(dto.getEmail())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 

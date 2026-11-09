@@ -48,4 +48,4 @@ tsc-output*.txt
 
 # Build
 **/build/
-**/dist/
+**/dist/test overwrite

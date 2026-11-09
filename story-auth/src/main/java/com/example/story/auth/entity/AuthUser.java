@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 
 @Data
 @Entity
-@Table(name = "auth_users")
+@Table(name = "users")
 public class AuthUser {
 
     @Id
@@ -35,6 +35,9 @@ public class AuthUser {
 
     @Column(name = "banned", nullable = false)
     private Boolean banned = false;
+
+    @Column(name = "closed_access", nullable = false)
+    private Boolean closedAccess = false;
 
     @Column(name = "consent", nullable = false)
     private Boolean consent = false;

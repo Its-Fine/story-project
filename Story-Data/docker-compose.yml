@@ -1,66 +1,73 @@
 services:
   postgresql:
-    image: bitnami/postgresql:latest
+    image: postgres:16-alpine
     container_name: story-postgresql
-    ports:
-      - "5432:5432"
-    env_file:
-      - ./environments/${ENVIRONMENT}
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-story_db}
+      POSTGRES_USER: ${POSTGRES_USER:-story_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-story_password}
+    ports: ["5432:5432"]
     volumes:
-      - ./services/postgresql:/docker-entrypoint-initdb.d:ro
-      - story-postgresql-volume:/bitnami/postgresql
+      - story-postgresql-volume:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
     restart: always
 
   minio:
-    image: minio/minio
+    image: pgsty/minio:RELEASE.2026-08-04T00-00-00Z
     container_name: story-minio
-    ports:
-      - "9000:9000"
-      - "9001:9001"
-    env_file:
-      - ./environments/${ENVIRONMENT}
-    volumes:
-      - story-minio-volume:/data
     command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minio_user}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minio_password}
+    ports: ["9000:9000", "9001:9001"]
+    volumes: [story-minio-volume:/data]
     restart: always
 
   minio-init:
-    image: minio/mc
-    container_name: story-minio-init
-    env_file:
-      - ./environments/${ENVIRONMENT}
-    depends_on:
-      - minio
-    entrypoint: > 
-      /bin/sh -c "sleep 5; 
-      mc alias set local http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD}; 
-      mc ls local/${MINIO_MC_BUCKET} || mc mb local/${MINIO_MC_BUCKET}; 
+    image: pgsty/mc:RELEASE.2026-11-09T00-00-00Z
+    depends_on: [minio]
+    entrypoint: >
+      /bin/sh -c "sleep 10;
+      mc alias set local http://minio:9000 $${MINIO_ROOT_USER} $${MINIO_ROOT_PASSWORD};
+      mc ls local/$${MINIO_MC_BUCKET:-story} || mc mb local/$${MINIO_MC_BUCKET:-story};
       exit 0;"
 
-  spring-auth:
+  story-auth:
     build: ../story-auth
     container_name: story-spring-auth
-    ports:
-      - "8001:8001"
-    env_file:
-      - ./environments/${ENVIRONMENT}
+    environment:
+      STORY_DATASOURCE_HOST: postgresql
+      POSTGRES_DB: ${POSTGRES_DB:-story_db}
+      POSTGRES_USER: ${POSTGRES_USER:-story_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-story_password}
+      STORY_JWT_SECRET: ${STORY_JWT_SECRET:-change-me-in-production-use-base64-encoded-secret}
+      STORY_COOKIE_SECURE: ${STORY_COOKIE_SECURE:-false}
+    ports: ["8001:8001"]
     depends_on:
       postgresql:
         condition: service_healthy
     restart: always
 
-  spring:
+  story-back:
     build: ../story-back
     container_name: story-spring
-    ports:
-      - "8000:8000"
-    env_file:
-      - ./environments/${ENVIRONMENT}
+    environment:
+      STORY_DATASOURCE_HOST: postgresql
+      STORY_MINIO_HOST: minio
+      POSTGRES_DB: ${POSTGRES_DB:-story_db}
+      POSTGRES_USER: ${POSTGRES_USER:-story_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-story_password}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minio_user}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minio_password}
+      MINIO_MC_BUCKET: ${MINIO_MC_BUCKET:-story}
+      STORY_JWT_SECRET: ${STORY_JWT_SECRET:-change-me-in-production-use-base64-encoded-secret}
+      STORY_ADMIN_USERNAME: ${STORY_ADMIN_USERNAME:-admin@example.com}
+      STORY_ADMIN_PASSWORD: ${STORY_ADMIN_PASSWORD:-admin_password}
+    ports: ["8000:8000"]
     depends_on:
       postgresql:
         condition: service_healthy
@@ -68,8 +75,13 @@ services:
         condition: service_completed_successfully
     restart: always
 
+  frontend:
+    build: ../Story-Front
+    container_name: story-frontend
+    ports: ["3000:80"]
+    depends_on: [story-back, story-auth]
+    restart: always
+
 volumes:
   story-postgresql-volume:
-    name: story-postgresql-volume
   story-minio-volume:
-    name: story-minio-volume
