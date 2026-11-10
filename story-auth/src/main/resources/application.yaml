@@ -19,8 +19,8 @@ spring:
 
 story:
   jwt:
-    secret: ${STORY_JWT_SECRET:change-me-in-production-use-base64-encoded-secret}
-    expiration-access: 15m
-    expiration-refresh: 1d
+    secret: ${STORY_JWT_SECRET:c3RvcnktcHJvamVjdC1qd3Qtc2VjcmV0LWtleS1jaGFuZ2UtaW4tcHJvZHVjdGlvbg==}
+    expiration-access: ${STORY_JWT_EXPIRATION_ACCESS:15m}
+    expiration-refresh: ${STORY_JWT_EXPIRATION_REFRESH:1d}
   cookie:
     secure: ${STORY_COOKIE_SECURE:false}

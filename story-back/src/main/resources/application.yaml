@@ -35,7 +35,7 @@ story:
   closed: false
 
   jwt:
-    secret: ${STORY_JWT_SECRET:change-me-in-production-use-base64-encoded-secret}
+    secret: ${STORY_JWT_SECRET:c3RvcnktcHJvamVjdC1qd3Qtc2VjcmV0LWtleS1jaGFuZ2UtaW4tcHJvZHVjdGlvbg==}
     expiration-access: 15m
     expiration-refresh: 1d
 

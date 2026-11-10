@@ -46,6 +46,7 @@ public class AuthService {
         user.setLastName(dto.getLastName());
         user.setBirthDate(dto.getBirthDate());
         user.setRole("PARTICIPANT");
+        user.setConsent(Boolean.TRUE.equals(dto.getConsent()));
         user.setParentConsent(Boolean.TRUE.equals(dto.getParentConsent()));
 
         authUserRepository.save(user);
