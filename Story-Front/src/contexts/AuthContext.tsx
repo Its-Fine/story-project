@@ -45,8 +45,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signIn = useCallback(async (accessToken: string) => {
     localStorage.setItem('token', accessToken);
-    setInitialized(false);
-
     try {
       const response = await authApi.me(accessToken);
       const nextRole = response.data?.role;
