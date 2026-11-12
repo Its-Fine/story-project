@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Input } from '../UI/Input';
 import { Button } from '../UI/Button';
 import { authApi } from '../../api/auth';
@@ -10,23 +9,20 @@ interface SignUpFormProps {
 }
 
 export const SignUpForm = ({ showNotification }: SignUpFormProps) => {
-  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     email: '',
     birthDate: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    parentConsent: false
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
 
   const validateEmail = (email: string): boolean => {
-    const allowedDomains = ['yandex.ru', 'gmail.com', 'mail.ru'];
-    if (!email.includes('@')) return false;
-    const domain = email.split('@')[1];
-    return allowedDomains.includes(domain);
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   };
 
   const calculateAge = (birthDate: string): number => {
@@ -39,6 +35,8 @@ export const SignUpForm = ({ showNotification }: SignUpFormProps) => {
     }
     return age;
   };
+
+  const isMinor = Boolean(formData.birthDate) && calculateAge(formData.birthDate) < 18;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
@@ -64,7 +62,7 @@ export const SignUpForm = ({ showNotification }: SignUpFormProps) => {
       newErrors.email = 'Введите email';
       isValid = false;
     } else if (!validateEmail(formData.email)) {
-      newErrors.email = 'Допустимы только домены: @yandex.ru, @gmail.com, @mail.ru';
+      newErrors.email = 'Введите корректный email';
       isValid = false;
     }
 
@@ -82,8 +80,8 @@ export const SignUpForm = ({ showNotification }: SignUpFormProps) => {
     if (!formData.password) {
       newErrors.password = 'Введите пароль';
       isValid = false;
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Пароль должен быть не менее 6 символов';
+    } else if (formData.password.length < 8) {
+      newErrors.password = 'Пароль должен быть не менее 8 символов';
       isValid = false;
     }
 
@@ -92,6 +90,11 @@ export const SignUpForm = ({ showNotification }: SignUpFormProps) => {
       isValid = false;
     } else if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = 'Пароли не совпадают';
+      isValid = false;
+    }
+
+    if (isMinor && !formData.parentConsent) {
+      newErrors.parentConsent = 'Для регистрации до 18 лет необходимо согласие родителя';
       isValid = false;
     }
 
@@ -113,16 +116,25 @@ export const SignUpForm = ({ showNotification }: SignUpFormProps) => {
       password: formData.password,
       password_again: formData.confirmPassword,
       consent: true,
-      parent_consent: false
+      parent_consent: isMinor ? formData.parentConsent : false
     });
 
-    if (response.status === 200 || response.status === 201) {
+    if ((response.status === 200 || response.status === 201) && response.data?.access_token) {
+      localStorage.setItem('token', response.data.access_token);
       showNotification('Регистрация прошла успешно!', 'success');
       setTimeout(() => {
-        navigate('/');
-      }, 1500);
+        window.location.assign('/profile');
+      }, 900);
     } else {
-      showNotification('Ошибка при регистрации', 'error');
+      const message = response.error?.message;
+      showNotification(
+        message === 'User already exists'
+          ? 'Этот email уже зарегистрирован. Перейдите во вкладку «Вход».'
+          : message === 'For users under 18, parental consent is required'
+            ? 'Для участника младше 18 лет требуется согласие родителя.'
+            : message || 'Не удалось зарегистрироваться. Проверьте данные и попробуйте ещё раз.',
+        'error'
+      );
       setIsLoading(false);
     }
   };
@@ -192,6 +204,23 @@ export const SignUpForm = ({ showNotification }: SignUpFormProps) => {
           required
         />
       </div>
+
+      {isMinor && (
+        <div className={css.consentField}>
+          <label className={css.consentLabel}>
+            <input
+              type="checkbox"
+              checked={formData.parentConsent}
+              onChange={(event) => {
+                setFormData(prev => ({ ...prev, parentConsent: event.target.checked }));
+                setErrors(prev => ({ ...prev, parentConsent: '' }));
+              }}
+            />
+            <span>Родитель или законный представитель дал согласие на регистрацию участника</span>
+          </label>
+          {errors.parentConsent && <div className={css.consentError}>{errors.parentConsent}</div>}
+        </div>
+      )}
 
       <Button type="submit" variant="primary" disabled={isLoading}>
         {isLoading ? 'Регистрация...' : 'Зарегистрироваться'}

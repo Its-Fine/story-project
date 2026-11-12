@@ -65,7 +65,10 @@ public class AuthController {
                     .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
                     .body(result);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+            HttpStatus status = "User already exists".equals(e.getMessage())
+                ? HttpStatus.CONFLICT
+                : HttpStatus.BAD_REQUEST;
+            return ResponseEntity.status(status)
                     .body(new ErrorDto(e.getMessage()));
         }
     }

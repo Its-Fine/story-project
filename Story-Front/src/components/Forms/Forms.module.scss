@@ -60,3 +60,34 @@
     color: $primary;
   }
 }
+
+.consentField {
+  padding: 14px 16px;
+  border: 1px solid $border;
+  border-radius: 12px;
+  background: #fffafa;
+}
+
+.consentLabel {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: $secondary;
+  font-size: 14px;
+  line-height: 1.45;
+  cursor: pointer;
+
+  input {
+    width: 18px;
+    height: 18px;
+    flex: 0 0 18px;
+    margin-top: 1px;
+    accent-color: $primary;
+  }
+}
+
+.consentError {
+  margin-top: 8px;
+  color: $error;
+  font-size: 13px;
+}

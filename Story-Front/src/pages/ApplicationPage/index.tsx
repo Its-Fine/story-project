@@ -99,10 +99,7 @@ export const ApplicationPage = () => {
   };
 
   const validateEmail = (email: string): boolean => {
-    const allowedDomains = ['yandex.ru', 'gmail.com', 'mail.ru'];
-    if (!email.includes('@')) return false;
-    const domain = email.split('@')[1];
-    return allowedDomains.includes(domain);
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   };
 
   const validateAge = (birthDate: string): { isValid: boolean; message: string } => {
@@ -123,7 +120,7 @@ export const ApplicationPage = () => {
     const value = e.target.value;
     setFormData(prev => ({ ...prev, email: value }));
     if (value && !validateEmail(value)) {
-      setErrors(prev => ({ ...prev, email: 'Допустимы только домены: @yandex.ru, @gmail.com, @mail.ru' }));
+      setErrors(prev => ({ ...prev, email: 'Введите корректный email' }));
     } else {
       setErrors(prev => ({ ...prev, email: '' }));
     }
@@ -192,7 +189,7 @@ export const ApplicationPage = () => {
     });
 
     if (formData.email && !validateEmail(formData.email)) {
-      newErrors.email = 'Допустимы только домены: @yandex.ru, @gmail.com, @mail.ru';
+      newErrors.email = 'Введите корректный email';
       isValid = false;
     }
 
@@ -216,34 +213,33 @@ export const ApplicationPage = () => {
     return isValid;
   };
 
-  const uploadFiles = async (): Promise<string[]> => {
+  const uploadFiles = async (appId: number): Promise<boolean> => {
     const token = localStorage.getItem('token');
     if (!token) {
       navigate('/');
-      return [];
+      return false;
     }
 
-    const uploadedUrls: string[] = [];
-
-    for (let i = 0; i < uploadedFiles.length; i++) {
-      const file = uploadedFiles[i];
-      try {
+    setIsUploading(true);
+    try {
+      for (let i = 0; i < uploadedFiles.length; i++) {
+        const file = uploadedFiles[i];
         setIsUploading(true);
-        const response = await storageApi.uploadWithProgress(
+        await storageApi.uploadWorkWithProgress(
           file,
-          contestId || '',
+          appId,
           token,
           (progress) => setUploadProgress(progress)
         );
-        uploadedUrls.push(response.link_to_file);
-      } catch (error) {
-        showNotification(`Ошибка загрузки файла ${file.name}`, 'error');
       }
+      return true;
+    } catch (error) {
+      showNotification(error instanceof Error ? error.message : 'Не удалось загрузить файл', 'error');
+      return false;
+    } finally {
+      setIsUploading(false);
+      setUploadProgress(0);
     }
-
-    setIsUploading(false);
-    setUploadProgress(0);
-    return uploadedUrls;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -256,33 +252,42 @@ export const ApplicationPage = () => {
       return;
     }
 
-    showNotification('Загрузка файлов...', 'success');
-
-    const uploadedUrls = await uploadFiles();
-    if (uploadedUrls.length === 0) {
-      showNotification('Не удалось загрузить файлы', 'error');
-      return;
-    }
-
-    const response = await applicationsApi.sendApplication(
+    const nominationName = availableNominations.find(
+      nomination => nomination.id === Number(formData.nomination)
+    )?.name;
+    const response = await applicationsApi.createApplication(
       {
         name: formData.workTitle,
-        annotation: formData.description,
-        nomination_id: parseInt(formData.nomination),
-        link_to_work: uploadedUrls[0]
+        description: nominationName
+          ? `Номинация: ${nominationName}\n\n${formData.description}`
+          : formData.description,
+        city: formData.city,
+        organization: formData.organization || undefined,
+        mentorName: formData.mentorName || undefined,
+        members: [],
+        isTeam: false,
+        isCurator: false,
       },
       contestId || '',
       token
     );
 
-    if (response.status === 201) {
-      showNotification('Заявка отправлена!', 'success');
-      setTimeout(() => {
-        navigate('/profile');
-      }, 2000);
-    } else {
-      showNotification('Ошибка при отправке заявки', 'error');
+    const appId = response.data?.appId;
+    if (response.status !== 201 || !appId) {
+      showNotification(response.error?.message || 'Не удалось создать заявку', 'error');
+      return;
     }
+
+    showNotification('Заявка создана. Загружаем файлы...', 'success');
+    const filesUploaded = await uploadFiles(appId);
+    if (!filesUploaded) {
+      await applicationsApi.deleteApplication(appId, token);
+      showNotification('Файл не загружен, черновик заявки удалён. Проверьте формат и повторите.', 'error');
+      return;
+    }
+
+    showNotification('Заявка отправлена!', 'success');
+    setTimeout(() => navigate('/profile'), 1500);
   };
 
   const handleClear = () => {
@@ -520,7 +525,7 @@ export const ApplicationPage = () => {
                 <input
                   type="file"
                   id="workFiles"
-                  accept=".jpg,.jpeg,.png,.pdf,.doc,.docx"
+                  accept=".jpg,.jpeg,.png,.tif,.tiff"
                   style={{ display: 'none' }}
                   multiple
                   onChange={handleFileSelect}
@@ -528,7 +533,7 @@ export const ApplicationPage = () => {
                 />
                 <div className={css.fileUploadIcon}>📁</div>
                 <div className={css.fileUploadText}>Нажмите для выбора файлов</div>
-                <div className={css.fileUploadHint}>PNG, JPG, PDF до 10 МБ</div>
+                <div className={css.fileUploadHint}>PNG, JPG, TIFF до 10 МБ</div>
               </div>
               {errors.files && <div className={css.errorMessage}>{errors.files}</div>}
             </div>

@@ -1,0 +1,111 @@
+@import '../../styles/variables.scss';
+
+.header {
+  position: relative;
+  z-index: 3;
+  width: 100%;
+  background: #ffffff;
+  border-bottom: 1px solid $border-light;
+  box-shadow: 0 4px 18px rgba(71, 71, 71, 0.06);
+}
+
+.container {
+  max-width: 1200px;
+  min-height: 72px;
+  margin: 0 auto;
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+
+.logo {
+  color: $primary;
+  font-size: 20px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex: 1;
+}
+
+.link {
+  color: $secondary;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: color 0.2s ease;
+
+  &:hover {
+    color: $primary;
+  }
+}
+
+.adminLink {
+  color: $primary;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.role {
+  color: $text-light;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.logout {
+  padding: 9px 16px;
+  border: 1px solid $border;
+  border-radius: 999px;
+  background: #ffffff;
+  color: $secondary;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+
+  &:hover {
+    border-color: $primary;
+    background: $primary;
+    color: #ffffff;
+  }
+}
+
+@media (max-width: $breakpoint-mobile) {
+  .container {
+    min-height: 64px;
+    padding: 12px 16px;
+    flex-wrap: wrap;
+    gap: 12px 20px;
+  }
+
+  .logo {
+    font-size: 18px;
+  }
+
+  .nav {
+    order: 3;
+    flex-basis: 100%;
+    gap: 18px;
+  }
+
+  .actions {
+    margin-left: auto;
+    gap: 8px;
+  }
+
+  .role {
+    font-size: 11px;
+  }
+}

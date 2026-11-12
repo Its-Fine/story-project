@@ -30,11 +30,26 @@ services:
   minio-init:
     image: pgsty/mc:RELEASE.2026-11-09T00-00-00Z
     depends_on: [minio]
-    entrypoint: >
-      /bin/sh -c "sleep 10;
-      mc alias set local http://minio:9000 $${MINIO_ROOT_USER} $${MINIO_ROOT_PASSWORD};
-      mc ls local/$${MINIO_MC_BUCKET:-story} || mc mb local/$${MINIO_MC_BUCKET:-story};
-      exit 0;"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minio_user}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minio_password}
+      MINIO_MC_BUCKET: ${MINIO_MC_BUCKET:-story}
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        attempt=0
+        while [ "$$attempt" -lt 30 ]; do
+          if mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD" >/dev/null 2>&1 && \
+             mc mb --ignore-existing "local/$$MINIO_MC_BUCKET" >/dev/null 2>&1; then
+            echo "MinIO bucket is ready: $$MINIO_MC_BUCKET"
+            exit 0
+          fi
+          attempt=$$((attempt + 1))
+          sleep 2
+        done
+        echo "Could not initialize MinIO bucket: $$MINIO_MC_BUCKET"
+        exit 1
 
   story-auth:
     build: ../story-auth

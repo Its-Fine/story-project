@@ -5,8 +5,9 @@
   left: 0;
   top: 0;
   height: 100vh;
+  height: 100dvh;
   width: 120px;
-  background:  #b00f1f;  // ярко-красный (#d61324)
+  background: $primary-hover;
   pointer-events: none;
   z-index: 1;
 
@@ -20,8 +21,9 @@
   right: 0;
   top: 0;
   height: 100vh;
+  height: 100dvh;
   width: 120px;
-  background: #b00f1f;  // рко-красный (#d61324)
+  background: $primary-hover;
   pointer-events: none;
   z-index: 1;
 

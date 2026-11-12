@@ -1,17 +1,20 @@
-import { apiClient } from './client';
-import { UploadResponse } from '../types';
+import { API_BASE_URL } from './client';
+
+export interface WorkUploadResponse {
+  workId: number;
+}
 
 export const storageApi = {
   // загрузка с прогрессом
-  uploadWithProgress: (
+  uploadWorkWithProgress: (
     file: File,
-    contestId: string,
+    appId: number,
     token: string,
     onProgress?: (percent: number) => void
-  ): Promise<UploadResponse> => {
+  ): Promise<WorkUploadResponse> => {
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
-      const url = `http://localhost:8000/api/v1/storage/upload_contest_work`;
+      const url = `${API_BASE_URL}/works?appId=${encodeURIComponent(appId)}`;
 
       xhr.upload.addEventListener('progress', (e) => {
         if (e.lengthComputable && onProgress) {
@@ -25,11 +28,18 @@ export const storageApi = {
           try {
             const response = JSON.parse(xhr.responseText);
             resolve(response);
-          } catch (error) {
+          } catch {
             reject(new Error('Ошибка при обработке ответа'));
           }
         } else {
-          reject(new Error(`Ошибка загрузки: ${xhr.status}`));
+          let message = `Ошибка загрузки: ${xhr.status}`;
+          try {
+            const response = JSON.parse(xhr.responseText);
+            if (response.message) message = response.message;
+          } catch {
+            // Keep the HTTP status message when the server does not return JSON.
+          }
+          reject(new Error(message));
         }
       });
 
@@ -39,32 +49,11 @@ export const storageApi = {
 
       xhr.open('POST', url);
       xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-      xhr.setRequestHeader('X-Contest-Id', contestId);
 
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('upload_type', 'application');
-      formData.append('contest_id', contestId);
 
       xhr.send(formData);
-    });
-  },
-
-  // простая загрузка
-  uploadContestWork: (file: File, contestId: string, token: string) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_type', 'application');
-    formData.append('contest_id', contestId);
-
-    return apiClient<UploadResponse>({
-      api: '/storage/upload_contest_work',
-      method: 'POST',
-      values: formData,
-      token,
-      customHeaders: {
-        'X-Contest-Id': contestId,
-      },
     });
   },
 };

@@ -1,0 +1,489 @@
+@import '../../styles/variables.scss';
+
+.page {
+  position: relative;
+  z-index: 2;
+  width: min(1120px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 32px 0 64px;
+}
+
+.hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 30px 34px;
+  margin-bottom: 22px;
+  border-radius: 22px;
+  background: linear-gradient(125deg, $primary 0%, #a70f1d 100%);
+  color: #ffffff;
+  box-shadow: 0 12px 30px rgba(167, 15, 29, 0.18);
+
+  :global(button) {
+    flex: 0 0 auto;
+  }
+}
+
+.eyebrow {
+  display: inline-block;
+  margin-bottom: 8px;
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+}
+
+.title {
+  margin: 0;
+  font-size: clamp(26px, 4vw, 36px);
+  line-height: 1.15;
+}
+
+.subtitle {
+  margin-top: 9px;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 14px;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.statCard,
+.panel {
+  border: 1px solid #ececef;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 8px 26px rgba(35, 35, 45, 0.045);
+}
+
+.statCard {
+  display: flex;
+  min-height: 132px;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 20px 24px;
+}
+
+.statLabel {
+  color: $text-light;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.statValue {
+  margin-top: 5px;
+  color: $secondary;
+  font-size: 34px;
+  line-height: 1.1;
+}
+
+.eventState {
+  margin-top: 8px;
+  font-size: 22px;
+}
+
+.open {
+  color: #21844b;
+}
+
+.closed {
+  color: $primary;
+}
+
+.tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px;
+  margin-bottom: 16px;
+  border: 1px solid #ececef;
+  border-radius: 15px;
+  background: #f7f7f8;
+
+  button {
+    padding: 10px 16px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: $text-light;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.18s ease, color 0.18s ease;
+
+    &:hover {
+      color: $primary;
+    }
+  }
+
+  .activeTab {
+    background: #ffffff;
+    color: $primary;
+    box-shadow: 0 2px 8px rgba(35, 35, 45, 0.08);
+  }
+
+  .refreshButton {
+    margin-left: auto;
+  }
+}
+
+.panel {
+  padding: 24px;
+}
+
+.panelHeading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+
+  h2 {
+    color: $secondary;
+    font-size: 20px;
+  }
+
+  p {
+    margin-top: 4px;
+    color: $text-light;
+    font-size: 13px;
+  }
+}
+
+.resultCount {
+  padding: 7px 11px;
+  border-radius: 999px;
+  background: #f5f5f6;
+  color: $text-light;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.textButton {
+  border: 0;
+  background: transparent;
+  color: $primary;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.recentList,
+.applicationList,
+.userList {
+  display: flex;
+  flex-direction: column;
+}
+
+.recentItem {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 14px 0;
+  border-top: 1px solid #f0f0f2;
+}
+
+.recentIcon,
+.avatar {
+  display: grid;
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border-radius: 13px;
+  background: #fff0f1;
+  color: $primary;
+  font-weight: 700;
+}
+
+.recentText,
+.userIdentity {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+
+  strong {
+    overflow: hidden;
+    color: $secondary;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  span {
+    overflow: hidden;
+    color: $text-light;
+    font-size: 12px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.fileCount,
+.userApplications {
+  color: $text-light;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.capabilityNote {
+  padding: 12px 14px;
+  margin-top: 18px;
+  border-radius: 10px;
+  background: #faf8f3;
+  color: #76633b;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.applicationCard {
+  padding: 18px 0;
+  border-top: 1px solid #f0f0f2;
+}
+
+.applicationTop,
+.workItem,
+.userRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.applicationTop {
+  h3 {
+    color: $secondary;
+    font-size: 16px;
+  }
+}
+
+.muted {
+  display: inline-block;
+  margin-top: 4px;
+  color: $text-light;
+  font-size: 12px;
+}
+
+.outlineButton {
+  padding: 8px 12px;
+  border: 1px solid #ead0d2;
+  border-radius: 9px;
+  background: white;
+  color: $primary;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+
+  &:hover {
+    background: #fff4f5;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.applicationMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-top: 13px;
+  color: $text-light;
+  font-size: 12px;
+}
+
+.description {
+  margin-top: 10px;
+  color: #505057;
+  font-size: 13px;
+  white-space: pre-wrap;
+}
+
+.worksList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  margin-top: 14px;
+  border-radius: 12px;
+  background: #f8f8f9;
+}
+
+.workItem {
+  padding-bottom: 9px;
+  border-bottom: 1px solid #e8e8eb;
+
+  &:last-child {
+    padding-bottom: 0;
+    border-bottom: 0;
+  }
+
+  div {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  strong {
+    color: $secondary;
+    font-size: 13px;
+  }
+
+  span {
+    color: $text-light;
+    font-size: 11px;
+  }
+}
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+
+  input {
+    width: min(420px, 100%);
+    padding: 11px 14px;
+    border: 1px solid $border;
+    border-radius: 10px;
+    font: inherit;
+    font-size: 14px;
+
+    &:focus {
+      outline: 2px solid rgba(214, 19, 36, 0.15);
+      border-color: $primary;
+    }
+  }
+}
+
+.userRow {
+  justify-content: flex-start;
+  padding: 13px 0;
+  border-top: 1px solid #f0f0f2;
+}
+
+.roleBadge {
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: #edf5ff;
+  color: #315a82;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.adminBadge {
+  background: #fff0f1;
+  color: $primary;
+}
+
+.userApplications {
+  min-width: 70px;
+  text-align: right;
+}
+
+.empty {
+  padding: 28px 10px;
+  color: $text-light;
+  text-align: center;
+}
+
+.error,
+.notice {
+  padding: 12px 16px;
+  margin-bottom: 14px;
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.error {
+  background: #fff0f1;
+  color: #a50e1c;
+}
+
+.notice {
+  background: #edf8f1;
+  color: #226b40;
+}
+
+@media (max-width: $breakpoint-tablet) {
+  .page {
+    width: min(100% - 40px, 900px);
+  }
+}
+
+@media (max-width: $breakpoint-mobile) {
+  .page {
+    width: calc(100% - 32px);
+    padding-top: 20px;
+  }
+
+  .hero {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 22px;
+  }
+
+  .stats {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .statCard {
+    min-height: 105px;
+  }
+
+  .tabs {
+    flex-wrap: wrap;
+
+    button {
+      padding: 9px 10px;
+      font-size: 12px;
+    }
+  }
+
+  .panel {
+    padding: 18px 14px;
+  }
+
+  .applicationTop,
+  .userRow {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .roleBadge {
+    margin-left: 52px;
+  }
+
+  .userApplications {
+    margin-left: auto;
+  }
+
+  .search {
+    flex-wrap: wrap;
+
+    input {
+      flex-basis: 100%;
+    }
+  }
+}

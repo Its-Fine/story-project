@@ -1,26 +1,34 @@
 import { apiClient } from './client';
 
 export interface Application {
-  id: number;
-  contest_title: string;
-  nomination_name: string;
-  annotation: string;
+  appId: number;
+  contestName: string;
   name: string;
-  link_to_work: string;
-  status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
-  rejection_reason?: string;
-  contest_id: number;
+  description: string;
+  worksCount: number;
 }
 
 export interface ApplicationsResponse {
   results: Application[];
 }
 
+export interface Contest {
+  conId: number;
+  name: string;
+  description?: string;
+  startAge?: number;
+  endAge?: number;
+}
+
 export interface SendApplicationRequest {
   name: string;
-  annotation: string;
-  nomination_id: number;
-  link_to_work: string;
+  description: string;
+  city: string;
+  organization?: string;
+  mentorName?: string;
+  members: unknown[];
+  isTeam: boolean;
+  isCurator: boolean;
 }
 
 export interface ApproveApplicationsRequest {
@@ -52,6 +60,21 @@ export interface UpdateApplicationResponse {
 }
 
 export const applicationsApi = {
+  getContests: (token: string) =>
+    apiClient<Contest[]>({
+      api: '/contests/all',
+      method: 'GET',
+      token,
+    }),
+
+  createApplication: (data: SendApplicationRequest, contestId: string, token: string) =>
+    apiClient<{ appId: number }>({
+      api: `/applications?conId=${encodeURIComponent(contestId)}`,
+      method: 'POST',
+      values: data,
+      token,
+    }),
+
   getAllPending: (contestId: string, token: string) =>
     apiClient<ApplicationsResponse>({
       api: '/applications/all/pending',
@@ -73,15 +96,11 @@ export const applicationsApi = {
       },
     }),
 
-  deleteApplication: (data: DeleteApplicationRequest, contestId: string, token: string) =>
+  deleteApplication: (appId: number, token: string) =>
     apiClient({
-      api: '/applications/delete',
+      api: `/applications/${appId}`,
       method: 'DELETE',
-      values: data,
       token,
-      customHeaders: {
-        'X-Contest-Id': contestId,
-      },
     }),
 
   rateApplication: (data: RateApplicationRequest, contestId: string, token: string) =>
@@ -139,19 +158,12 @@ export const applicationsApi = {
       },
     }),
 
-  getUserApplications: (token: string, status?: string, page: number = 1) => {
-    let url = '/applications/all/user';
-    const params = new URLSearchParams();
-    params.append('page', page.toString());
-    if (status) params.append('status', status);
-    if (params.toString()) url += `?${params.toString()}`;
-
-    return apiClient<ApplicationsResponse>({
-      api: url,
+  getUserApplications: (token: string) =>
+    apiClient<Application[]>({
+      api: '/applications',
       method: 'GET',
       token,
-    });
-  },
+    }),
 
   getAllAccepted: (contestId: string, token: string) =>
     apiClient<ApplicationsResponse>({

@@ -1,38 +1,35 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Link } from 'react-router-dom';
+import css from './Header.module.scss';
+import { getRoleLabel } from '../../utils/roleLabels';
 
 interface HeaderProps {
   role?: string | null;
 }
 
 export const Header = ({ role }: HeaderProps) => {
-  const navigate = () => {
-    // placeholder for future navigation logic
-  };
-
   const isAdmin = role === 'ADMIN';
 
   return (
-    <header className="header">
-      <div className="header__container">
-        <Link to="/" className="header__logo">
+    <header className={css.header}>
+      <div className={css.container}>
+        <Link to="/" className={css.logo}>
           Сказка#Дизайн
         </Link>
-        <nav className="header__nav">
-          <Link to="/profile" className="header__link">
+        <nav className={css.nav}>
+          <Link to="/profile" className={css.link}>
             Личный кабинет
           </Link>
           {isAdmin && (
-            <Link to="/admin" className="header__link header__link--admin">
+            <Link to="/admin" className={`${css.link} ${css.adminLink}`}>
               Админка
             </Link>
           )}
         </nav>
-        <div className="header__actions">
-          <span className="header__role">{role ? `Роль: ${role}` : ''}</span>
+        <div className={css.actions}>
+          {role && <span className={css.role}>Роль: {getRoleLabel(role)}</span>}
           <button
-            className="header__btn"
+            className={css.logout}
             onClick={() => {
               localStorage.removeItem('token');
               window.location.href = '/';

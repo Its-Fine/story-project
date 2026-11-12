@@ -4,26 +4,18 @@ import { DecorLines } from '../../components/Layout/DecorLines';
 import { Button } from '../../components/UI/Button';
 import { applicationsApi } from '../../api/applications';
 import { authApi } from '../../api/auth';
-import { Application } from '../../types';
+import { Application, Contest } from '../../api/applications';
 import css from './index.module.scss';
 
 export const ProfilePage = () => {
   const navigate = useNavigate();
   const [applications, setApplications] = useState<Application[]>([]);
+  const [contests, setContests] = useState<Contest[]>([]);
+  const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<string>('');
   const [error, setError] = useState<string>('');
 
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      navigate('/');
-      return;
-    }
-    fetchApplications();
-  }, [filter, navigate]);
-
-  const fetchApplications = async () => {
+  const fetchApplications = React.useCallback(async () => {
     try {
       setLoading(true);
       setError('');
@@ -35,12 +27,17 @@ export const ProfilePage = () => {
       }
 
       const response = await applicationsApi.getUserApplications(
-        token,
-        filter || undefined
+        token
       );
 
-      if (response.data?.results) {
-        setApplications(response.data.results);
+      if (response.data) {
+        setApplications(response.data);
+      } else if (response.status === 401) {
+        setError('Сессия истекла. Выйдите и войдите снова.');
+      } else if (response.status === 403) {
+        setError('У этой учётной записи нет доступа к заявкам участника.');
+      } else if (response.status >= 400) {
+        setError(response.error?.message || 'Ошибка при загрузке заявок');
       }
     } catch (err) {
       setError('Ошибка при загрузке заявок');
@@ -48,6 +45,39 @@ export const ProfilePage = () => {
     } finally {
       setLoading(false);
     }
+  }, [navigate]);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      navigate('/');
+      return;
+    }
+
+    Promise.all([authApi.me(token), applicationsApi.getContests(token)])
+      .then(([userResponse, contestsResponse]) => {
+        if (userResponse.data?.role) {
+          setRole(userResponse.data.role);
+        }
+        if (contestsResponse.data) {
+          setContests(contestsResponse.data);
+        }
+      })
+      .catch((err) => {
+        console.error('Ошибка загрузки роли или конкурсов', err);
+      });
+  }, [navigate]);
+
+  useEffect(() => {
+    void fetchApplications();
+  }, [fetchApplications]);
+
+  const goToApplication = () => {
+    if (contests.length === 0) {
+      setError('Список конкурсов пока не загружен. Обновите страницу через несколько секунд.');
+      return;
+    }
+    navigate(`/application/${contests[0].conId}`);
   };
 
   const handleLogout = async () => {
@@ -59,7 +89,7 @@ export const ProfilePage = () => {
     navigate('/');
   };
 
-  const handleDeleteApplication = async (id: number, contestId: number) => {
+  const handleDeleteApplication = async (id: number) => {
     if (!window.confirm('Вы уверены, что хотите удалить заявку?')) return;
 
     const token = localStorage.getItem('token');
@@ -69,13 +99,9 @@ export const ProfilePage = () => {
     }
 
     try {
-      const response = await applicationsApi.deleteApplication(
-        { application_id: id },  // ← обернули в объект
-        contestId.toString(),
-        token
-      );
+      const response = await applicationsApi.deleteApplication(id, token);
 
-      if (response.status === 200) {
+      if (response.status === 204) {
         fetchApplications();
       }
     } catch (err) {
@@ -83,30 +109,7 @@ export const ProfilePage = () => {
     }
   };
 
-  const stats = {
-    total: applications.length,
-    pending: applications.filter(a => a.status === 'PENDING').length,
-    accepted: applications.filter(a => a.status === 'ACCEPTED').length,
-    rejected: applications.filter(a => a.status === 'REJECTED').length
-  };
-
-  const getStatusText = (status: string) => {
-    switch(status) {
-      case 'PENDING': return 'На рассмотрении';
-      case 'ACCEPTED': return 'Принята';
-      case 'REJECTED': return 'Отклонена';
-      default: return status;
-    }
-  };
-
-  const getStatusClass = (status: string) => {
-    switch(status) {
-      case 'PENDING': return css.statusPending;
-      case 'ACCEPTED': return css.statusAccepted;
-      case 'REJECTED': return css.statusRejected;
-      default: return '';
-    }
-  };
+  const totalWorks = applications.reduce((sum, application) => sum + application.worksCount, 0);
 
   return (
     <>
@@ -114,43 +117,24 @@ export const ProfilePage = () => {
       <div className={css.container}>
         <div className={css.header}>
           <h1 className={css.title}>Личный кабинет</h1>
-          <div className={css.headerButtons}>
-            <Button variant="primary" onClick={() => navigate('/application/123')}>
-              + Подать заявку
-            </Button>
-          </div>
+          {role === 'PARTICIPANT' && (
+            <div className={css.headerButtons}>
+              <Button variant="primary" onClick={goToApplication}>
+                + Подать заявку
+              </Button>
+            </div>
+          )}
         </div>
 
         <div className={css.stats}>
           <div className={css.statCard}>
-            <div className={css.statValue}>{stats.total}</div>
+            <div className={css.statValue}>{applications.length}</div>
             <div className={css.statLabel}>Всего заявок</div>
           </div>
           <div className={css.statCard}>
-            <div className={css.statValue}>{stats.pending}</div>
-            <div className={css.statLabel}>На рассмотрении</div>
+            <div className={css.statValue}>{totalWorks}</div>
+            <div className={css.statLabel}>Файлов в заявках</div>
           </div>
-          <div className={css.statCard}>
-            <div className={css.statValue}>{stats.accepted}</div>
-            <div className={css.statLabel}>Принято</div>
-          </div>
-          <div className={css.statCard}>
-            <div className={css.statValue}>{stats.rejected}</div>
-            <div className={css.statLabel}>Отклонено</div>
-          </div>
-        </div>
-
-        <div className={css.filters}>
-          <select
-            className={css.filterSelect}
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-          >
-            <option value="">Все заявки</option>
-            <option value="PENDING">На рассмотрении</option>
-            <option value="ACCEPTED">Принятые</option>
-            <option value="REJECTED">Отклоненные</option>
-          </select>
         </div>
 
         <h2 className={css.sectionTitle}>Мои заявки</h2>
@@ -162,48 +146,32 @@ export const ProfilePage = () => {
         ) : applications.length === 0 ? (
           <div className={css.emptyState}>
             <p className={css.emptyText}>У вас пока нет заявок</p>
-            <Button variant="primary" onClick={() => navigate('/application/123')}>
-              Подать первую заявку
-            </Button>
+            {role === 'PARTICIPANT' && (
+              <Button variant="primary" onClick={goToApplication}>
+                Подать первую заявку
+              </Button>
+            )}
           </div>
         ) : (
           <div className={css.applicationsList}>
             {applications.map(app => (
-              <div key={app.id} className={css.applicationCard}>
+              <div key={app.appId} className={css.applicationCard}>
                 <div className={css.applicationHeader}>
-                  <span className={css.applicationContest}>{app.contest_title}</span>
-                  <span className={`${css.applicationStatus} ${getStatusClass(app.status)}`}>
-                    {getStatusText(app.status)}
-                  </span>
+                  <span className={css.applicationContest}>{app.contestName}</span>
                 </div>
                 <div className={css.applicationDetails}>
-                  <div><strong>Номинация:</strong> {app.nomination_name}</div>
                   <div><strong>Работа:</strong> {app.name}</div>
-                  <div><strong>Описание:</strong> {app.annotation}</div>
-                  {app.link_to_work && (
-                    <div>
-                      <strong>Файл:</strong>{' '}
-                      <a href={app.link_to_work} target="_blank" rel="noopener noreferrer">
-                        Скачать
-                      </a>
-                    </div>
-                  )}
-                  {app.rejection_reason && (
-                    <div className={css.rejectionReason}>
-                      <strong>Причина отказа:</strong> {app.rejection_reason}
-                    </div>
-                  )}
+                  <div><strong>Описание:</strong> {app.description}</div>
+                  <div><strong>Файлов:</strong> {app.worksCount}</div>
                 </div>
-                {app.status === 'PENDING' && (
-                  <div className={css.applicationActions}>
-                    <button
-                      className={css.deleteBtn}
-                      onClick={() => handleDeleteApplication(app.id, app.contest_id)}
-                    >
-                      Удалить
-                    </button>
-                  </div>
-                )}
+                <div className={css.applicationActions}>
+                  <button
+                    className={css.deleteBtn}
+                    onClick={() => handleDeleteApplication(app.appId)}
+                  >
+                    Удалить
+                  </button>
+                </div>
               </div>
             ))}
           </div>

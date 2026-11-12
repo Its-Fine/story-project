@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Input } from '../UI/Input';
 import { Button } from '../UI/Button';
 import { authApi } from '../../api/auth';
@@ -10,7 +9,6 @@ interface SignInFormProps {
 }
 
 export const SignInForm = ({ showNotification }: SignInFormProps) => {
-  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -22,10 +20,7 @@ export const SignInForm = ({ showNotification }: SignInFormProps) => {
   const [isLoading, setIsLoading] = useState(false);
 
   const validateEmail = (email: string): boolean => {
-    const allowedDomains = ['yandex.ru', 'gmail.com', 'mail.ru'];
-    if (!email.includes('@')) return false;
-    const domain = email.split('@')[1];
-    return allowedDomains.includes(domain);
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -45,7 +40,7 @@ export const SignInForm = ({ showNotification }: SignInFormProps) => {
       newErrors.email = 'Введите email';
       isValid = false;
     } else if (!validateEmail(formData.email)) {
-      newErrors.email = 'Допустимы только домены: @yandex.ru, @gmail.com, @mail.ru';
+      newErrors.email = 'Введите корректный email';
       isValid = false;
     }
 
@@ -73,8 +68,8 @@ export const SignInForm = ({ showNotification }: SignInFormProps) => {
       localStorage.setItem('token', response.data.access_token);
       showNotification('Вход выполнен успешно!', 'success');
       setTimeout(() => {
-        navigate('/profile');
-      }, 1000);
+        window.location.assign('/profile');
+      }, 700);
     } else {
       showNotification('Ошибка входа. Проверьте email и пароль', 'error');
       setIsLoading(false);

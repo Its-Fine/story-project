@@ -1,110 +1,120 @@
-# Story-Back
-
 # Story — творческий конкурс
 
-Состав проекта:
-- `story-auth` — отдельный сервис аутентификации (Spring Boot 3, Java 21, JWT, httpOnly refresh-cookie)
-- `story-back` — бэкенд на Spring Boot 3 (Java 21, PostgreSQL, Minio, JWT)
-- `Story-Front` — фронтенд на React 18 + TypeScript (Create React App)
-- `Story-Data` — инфраструктура: Docker Compose (PostgreSQL + Minio + Spring + Frontend)
-- `Story-Tables` — Python-утилита для генерации отчётов/дипломов
+Веб-приложение для регистрации участников и подачи творческих работ на конкурс.
 
----
+## Состав проекта
 
-## 1. Быстрый старт через Docker (рекомендуется)
+| Каталог | Назначение |
+|---|---|
+| `Story-Front` | Веб-интерфейс: регистрация, вход, профиль и форма заявки. React + TypeScript. |
+| `story-auth` | Регистрация, вход и проверка JWT. Spring Boot, Java 21. |
+| `story-back` | API конкурса, заявок, файлов и отчётов. Spring Boot, Java 21. |
+| `Story-Data` | Docker Compose, PostgreSQL и MinIO. |
+| `Story-Tables` | Отдельная Python-утилита для таблиц/дипломов; пока не входит в основной запуск приложения. |
 
-Все сервисы поднимаются одним `docker-compose` из папки `Story-Data`.
+## Быстрый запуск на Windows
 
-### 1.1 Подготовка окружения
+### Требования
 
-```bash
-cd Story-Data
-cp .env.example .env
-# отредактируйте .env при необходимости (пароли, секрет JWT и т.д.)
+- Установленный и запущенный Docker Desktop с Docker Compose.
+- Свободные порты `3000`, `5432`, `8000`, `8001`, `9000` и `9001`.
+
+### 1. Подготовьте настройки
+
+Откройте PowerShell в корневой папке репозитория. Если файла `Story-Data/.env` ещё нет, создайте его из примера:
+
+```powershell
+Copy-Item .\Story-Data\.env.example .\Story-Data\.env
 ```
 
-### 1.2 Запуск
+Сгенерируйте Base64-секрет для JWT:
 
-```bash
-# из папки Story-Data
+```powershell
+[Convert]::ToBase64String([byte[]](1..48 | ForEach-Object { Get-Random -Maximum 256 }))
+```
+
+Откройте `Story-Data/.env` и вставьте полученную строку в `STORY_JWT_SECRET`. Также задайте свой пароль в `STORY_ADMIN_PASSWORD`. Для локального запуска оставьте `STORY_COOKIE_SECURE=false`.
+
+> Не публикуйте `.env` и не используйте демонстрационные пароли в доступной из интернета среде. Для production нужны собственные секреты и HTTPS.
+
+### 2. Соберите и запустите приложение
+
+```powershell
+Set-Location .\Story-Data
 docker compose up -d --build
 ```
 
-Сервисы:
-- **Фронтенд** (SPA): `http://localhost:3000`
-- **story-auth** (регистрация/вход/refresh): `http://localhost:8001`
-- **story-back** (бизнес-логика, заявки, отчёты): `http://localhost:8000`
-- Swagger UI: `http://localhost:8000/swagger-ui.html`
-- PostgreSQL: `localhost:5432`
-- Minio: `localhost:9000` (консоль `localhost:9001`)
+Первый запуск может занять несколько минут: Docker скачает образы, соберёт два Java-сервиса и фронтенд.
 
-Остановить:
-```bash
+### 3. Откройте приложение
+
+| Что | Адрес |
+|---|---|
+| Веб-приложение | <http://localhost:3000> |
+| Swagger API | <http://localhost:8000/swagger-ui/index.html> |
+| PostgreSQL | `localhost:5432` (подключаться через pgAdmin/DBeaver; это не сайт и в браузере не открывается) |
+| MinIO API / консоль | `localhost:9000` / <http://localhost:9001> |
+
+Фронтенд сам перенаправляет запросы авторизации в `story-auth`, а остальные API-запросы — в `story-back`. Обычно достаточно открыть только `http://localhost:3000`.
+
+### 4. Войдите или зарегистрируйтесь
+
+- Администратор при первом запуске создаётся из `STORY_ADMIN_USERNAME` и `STORY_ADMIN_PASSWORD` в `.env`. В примере это `admin@example.com`; используйте пароль, который сами указали.
+- Обычный участник регистрируется на главной странице, затем входит с теми же данными. Новые регистрации получают роль `PARTICIPANT`.
+- При регистрации укажите корректный email; минимальная длина пароля на сервере — 8 символов.
+
+После входа участник попадает в профиль со списком своих заявок. Ссылки `/profile`, `/application/<contestId>` и `/admin` открываются только согласно роли пользователя.
+
+## Важно: текущее состояние функций
+
+Некоторые части интерфейса ещё не завершены — это не ошибка запуска:
+
+- Страница `/admin` пока является заглушкой, а не полноценной панелью управления.
+- Ссылка восстановления пароля в форме входа пока показывает сообщение, что функция появится позже.
+- Кнопка подачи заявки в профиле сейчас открывает `/application/123`. Это фиксированный ID, который может не совпадать с ID конкурса в вашей базе. При ошибке проверьте реальные ID через `GET /api/v1/contests/all` в Swagger (потребуется авторизация участника) и откройте `/application/<реальный-ID>`.
+- Для регистрации участника младше 18 лет сервер требует согласие родителя, но форма регистрации сейчас отправляет `parent_consent=false`; такая регистрация через текущий интерфейс не пройдёт.
+- Экспорт Excel доступен в API по `GET /api/v1/reports/applications/excel` для администратора; кнопки экспорта на странице `/admin` пока нет.
+- `Story-Tables` — отдельный скрипт. Простая команда `python main.py` сейчас не запускает обработку: сценарии в точке входа отключены, утилите требуется отдельная настройка.
+
+## Остановка, логи и данные
+
+Команды выполняются из каталога `Story-Data`:
+
+```powershell
+# Посмотреть состояние контейнеров
+docker compose ps
+
+# Смотреть логи всех сервисов
+docker compose logs -f
+
+# Логи конкретного сервиса
+docker compose logs -f story-back
+
+# Остановить контейнеры, сохранив базу и загруженные файлы
 docker compose down
+
+# Удалить контейнеры И ВСЕ данные PostgreSQL/MinIO
+docker compose down -v
 ```
 
-### 1.3 Переменные окружения
+При повторном запуске используйте `docker compose up -d`. После изменений кода пересоберите сервисы командой `docker compose up -d --build`.
 
-Пример `.env` лежит в `Story-Data/.env.example`. Обязательные минимум:
-- `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`
-- `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD`, `MINIO_MC_BUCKET`
-- `STORY_JWT_SECRET` — Base64-секрет не менее 32 байт
-- `STORY_ADMIN_USERNAME`, `STORY_ADMIN_PASSWORD` — создаваемый супер администратор при старте
-- `STORY_COOKIE_SECURE` — `false` для localhost (http), `true` для продакшена (https)
+> Изменение `STORY_ADMIN_PASSWORD` не меняет пароль уже созданного администратора: он создаётся только при отсутствии записи в базе. Не используйте `docker compose down -v` ради смены пароля — эта команда удалит все данные приложения.
 
----
+## Локальная разработка
 
-## 2. Запуск фронтенда локально
+Для разработки фронтенда с горячей перезагрузкой сначала запустите весь стек, затем остановите контейнерный фронтенд и поднимите React локально:
 
-```bash
-cd Story-Front
+```powershell
+Set-Location .\Story-Data
+docker compose up -d --build
+docker compose stop frontend
+
+Set-Location ..\Story-Front
 npm install
-npm start        # http://localhost:3000
+npm start
 ```
 
-Фронтенд по умолчанию обращается к `http://localhost:8000/api/v1` и `http://localhost:8001/api/v1`.
+Фронтенд откроется на <http://localhost:3000> и по умолчанию обращается к API на `localhost:8000` и `localhost:8001`. Для запуска Java-сервисов вне Docker нужны JDK 21, Maven и переменные подключения к локальной PostgreSQL/MinIO; проще для первого знакомства запускать весь стек через Compose.
 
----
-
-## 3. Роли и разделение доступа
-
-Приложение — **одно SPA с ролевым разделением**:
-
-| Роль | Доступ |
-|------|--------|
-| `PARTICIPANT` | `/profile`, `/application/:contestId` — подача и просмотр своих заявок |
-| `ADMIN` | всё выше + `/admin` — админская панель |
-
-Роль определяется из JWT-токена при загрузке приложения (`/api/v1/auth/me`). В шапке (`Header`) отображается текущая роль, доступна ссылка «Админка» только для `ADMIN`.
-
----
-
-## 4. Архитектура аутентификации
-
-- **story-auth** — отдельный Spring Boot сервис (порт 8001), отвечает за регистрацию, логин, refresh, сброс пароля. Использует общую таблицу `users` с story-back.
-- **story-back** — верифицирует JWT через общий `STORY_JWT_SECRET`, не управляет пользователями напрямую.
-- **Frontend (nginx)** — проксирует `/api/v1/auth/*` на story-auth, остальные `/api/v1/*` на story-back. Один origin — нет проблем с CORS.
-
----
-
-## 5. Что сделано
-
-- ✅ Единая таблица пользователей `users` (оба сервиса смотрят в одну БД)
-- ✅ Auth как отдельное приложение (story-auth: signup/login/refresh/me/logout/reset)
-- ✅ Excel-отчёт через Apache POI (внутри story-back)
-- ✅ SPA с ролевыми роутами
-- ✅ Docker Compose: PostgreSQL + Minio + story-auth + story-back + frontend
-- ✅ CORS настроен в обоих Spring-сервисах
-- ✅ Cookie configurable через `STORY_COOKIE_SECURE`
-
----
-
-## 6. Генерация отчётов
-
-Python-утилита в `Story-Tables` (`main.py`, `requirements.txt`). Запуск:
-
-```bash
-cd Story-Tables
-pip install -r requirements.txt
-python main.py
-```
+`start.bat` в текущем репозитории не является исполняемым скриптом запуска. Используйте команды Docker Compose из этой инструкции.
