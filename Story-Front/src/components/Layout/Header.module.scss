@@ -3,7 +3,7 @@
 .header {
   position: relative;
   z-index: 3;
-  width: 100%;
+  width: calc(100% - 88px);
   background: #ffffff;
   border-bottom: 1px solid $border-light;
   box-shadow: 0 4px 18px rgba(71, 71, 71, 0.06);
@@ -40,15 +40,10 @@
   font-weight: 600;
   text-decoration: none;
   transition: color 0.2s ease;
-
-  &:hover {
-    color: $primary;
-  }
+  &:hover { color: $primary; }
 }
 
-.adminLink {
-  color: $primary;
-}
+.adminLink { color: $primary; }
 
 .actions {
   display: flex;
@@ -74,38 +69,24 @@
   font-weight: 600;
   cursor: pointer;
   transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
-
-  &:hover {
-    border-color: $primary;
-    background: $primary;
-    color: #ffffff;
-  }
+  &:hover { border-color: $primary; background: $primary; color: #ffffff; }
+  &:disabled { opacity: 0.5; cursor: wait; }
 }
 
 @media (max-width: $breakpoint-mobile) {
+  .header { width: calc(100% - 64px); }
   .container {
     min-height: 64px;
     padding: 12px 16px;
     flex-wrap: wrap;
     gap: 12px 20px;
   }
-
-  .logo {
-    font-size: 18px;
-  }
-
+  .logo { font-size: 18px; }
   .nav {
     order: 3;
     flex-basis: 100%;
     gap: 18px;
   }
-
-  .actions {
-    margin-left: auto;
-    gap: 8px;
-  }
-
-  .role {
-    font-size: 11px;
-  }
+  .actions { margin-left: auto; gap: 8px; }
+  .role { font-size: 11px; }
 }
