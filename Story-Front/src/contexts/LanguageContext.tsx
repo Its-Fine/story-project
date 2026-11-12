@@ -185,6 +185,9 @@ const english: Record<string, string> = {
   'Декоративно-прикладное искусство (сохранение народных традиций, творческое осмысление, поиск современных форм и их интерпретация)': 'Arts and crafts (preserving folk traditions, creative interpretation and contemporary forms)',
   'Диджитал-арт и цифровая живопись (художественно-графические произведения, выполненные с помощью компьютерных технологий и специализированного программного обеспечения)': 'Digital art and painting (artistic and graphic works created with digital tools and specialized software)',
   'Промышленный дизайн (эскизы, макеты, действующие прототипы промышленных изделий: техника, оборудование, предметы интерьера и городской среды, игрушки, ювелирные изделия, сувенирная продукция и др.)': 'Industrial design (sketches, models and prototypes of equipment, technology, interior and urban objects, toys, jewelry, souvenirs and more)',
+  'Организация': 'Organization',
+  'Заполните название, описание и населённый пункт': 'Enter the title, description and city',
+  'Не удалось обновить заявку': 'Could not update the application',
 };
 
 interface LanguageContextValue {
