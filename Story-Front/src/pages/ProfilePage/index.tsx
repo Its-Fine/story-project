@@ -58,10 +58,12 @@ export const ProfilePage = () => {
         if (!active) return;
         if (accountResponse.data) {
           setAccount(accountResponse.data);
-          setProfileDraft({
-            firstName: accountResponse.data.firstName ?? '',
-            lastName: accountResponse.data.lastName ?? '',
-          });
+          if (!isEditing) {
+            setProfileDraft({
+              firstName: accountResponse.data.firstName ?? '',
+              lastName: accountResponse.data.lastName ?? '',
+            });
+          }
         } else {
           setError(accountResponse.error?.message || t('Не удалось загрузить профиль'));
         }
@@ -76,7 +78,7 @@ export const ProfilePage = () => {
     };
     void load();
     return () => { active = false; };
-  }, [navigate, t]);
+  }, [navigate, t, isEditing]);
 
   const goToApplication = () => {
     if (!contests.length) {
