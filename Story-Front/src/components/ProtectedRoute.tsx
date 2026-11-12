@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { authApi } from '../api/auth';
+import { useAuth } from '../contexts/AuthContext';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -8,47 +8,19 @@ interface ProtectedRouteProps {
 }
 
 export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
-  const token = localStorage.getItem('token');
+  const { role, initialized } = useAuth();
   const location = useLocation();
-  const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
-  const [hasRole, setHasRole] = useState<boolean>(true);
 
-  useEffect(() => {
-    if (!token) {
-      setIsAuthorized(false);
-      return;
-    }
-
-    // Проверяем роль, если она требуется
-    if (requiredRole) {
-      authApi.me(token)
-        .then((res) => {
-          if (res.data?.role === requiredRole) {
-            setHasRole(true);
-            setIsAuthorized(true);
-          } else {
-            setHasRole(false);
-            setIsAuthorized(true);
-          }
-        })
-        .catch(() => {
-          setIsAuthorized(false);
-        });
-    } else {
-      setIsAuthorized(true);
-    }
-  }, [token, requiredRole]);
-
-  if (isAuthorized === null) {
-    return <div>Загрузка...</div>; // Или ваш компонент спиннера
+  if (!initialized) {
+    return <div className="app-loading">Загрузка...</div>;
   }
 
-  if (!isAuthorized) {
+  if (!role) {
     return <Navigate to="/" state={{ from: location }} replace />;
   }
 
-  if (!hasRole) {
-    return <Navigate to="/" replace />;
+  if (requiredRole && role !== requiredRole) {
+    return <Navigate to={role === 'ADMIN' ? '/admin' : '/profile'} replace />;
   }
 
   return <>{children}</>;
