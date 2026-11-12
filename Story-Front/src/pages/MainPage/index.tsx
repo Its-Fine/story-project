@@ -43,8 +43,6 @@ export const MainPage = () => {
           <div className={css.content}>
             <section className={css.hero}>
               <Logo size="large" />
-              <h1 className={css.title}>Сказка#Дизайн</h1>
-              <p className={css.subtitle}>{t('Международный творческий конкурс')}</p>
             </section>
 
             <section className={css.formContainer} aria-label={t('Личный кабинет')}>
