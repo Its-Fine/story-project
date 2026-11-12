@@ -1,0 +1,303 @@
+@import '../../styles/variables.scss';
+
+body {
+  background: #ffffff;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  position: relative;
+  z-index: 2;
+  background: #ffffff;
+}
+
+.header {
+  background: $primary;
+  border-radius: 24px;
+  padding: 30px 40px;
+  margin-bottom: 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: white;
+  flex-wrap: wrap;
+  gap: 20px;
+
+  @media (max-width: $breakpoint-mobile) {
+    flex-direction: column;
+    text-align: center;
+    padding: 20px;
+  }
+}
+
+.title {
+  margin: 0;
+  font-size: 32px;
+
+  @media (max-width: $breakpoint-mobile) {
+    font-size: 24px;
+  }
+}
+
+.headerButtons {
+  display: flex;
+  gap: 15px;
+
+  @media (max-width: $breakpoint-mobile) {
+    flex-direction: column;
+    width: 100%;
+  }
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  margin-bottom: 30px;
+
+  @media (max-width: $breakpoint-mobile) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.statCard {
+  background: white;
+  border: 2px solid $border;
+  border-radius: 16px;
+  padding: 20px;
+  text-align: center;
+  transition: all 0.3s;
+
+  &:hover {
+    border-color: $primary;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+}
+
+.statValue {
+  font-size: 36px;
+  font-weight: 700;
+  color: $primary;
+  margin-bottom: 8px;
+
+  @media (max-width: $breakpoint-mobile) {
+    font-size: 28px;
+  }
+}
+
+.statLabel {
+  color: $text-light;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.filters {
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.filterSelect {
+  padding: 10px 20px;
+  border: 2px solid $border;
+  border-radius: 12px;
+  font-size: 14px;
+  background: white;
+  cursor: pointer;
+  min-width: 200px;
+
+  &:focus {
+    outline: none;
+    border-color: $primary;
+  }
+}
+
+.sectionTitle {
+  font-size: 24px;
+  font-weight: 600;
+  margin-bottom: 20px;
+  color: $secondary;
+  position: relative;
+  padding-left: 15px;
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 5px;
+    bottom: 5px;
+    width: 5px;
+    background: $primary;
+    border-radius: 3px;
+  }
+
+  @media (max-width: $breakpoint-mobile) {
+    font-size: 20px;
+  }
+}
+
+.loadingState {
+  text-align: center;
+  padding: 60px 20px;
+  color: $text-light;
+  font-size: 18px;
+}
+
+.emptyState {
+  background: white;
+  border: 2px dashed $border;
+  border-radius: 24px;
+  padding: 60px 20px;
+  text-align: center;
+  margin-bottom: 40px;
+
+  @media (max-width: $breakpoint-mobile) {
+    padding: 40px 15px;
+  }
+}
+
+.emptyText {
+  font-size: 18px;
+  color: $text-light;
+  margin-bottom: 20px;
+
+  @media (max-width: $breakpoint-mobile) {
+    font-size: 16px;
+  }
+}
+
+.applicationsList {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-bottom: 40px;
+}
+
+.applicationCard {
+  background: white;
+  border: 2px solid $border;
+  border-radius: 16px;
+  padding: 20px;
+  transition: all 0.3s;
+  position: relative;
+
+  &:hover {
+    border-color: $primary;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+
+  @media (max-width: $breakpoint-mobile) {
+    padding: 15px;
+  }
+}
+
+.applicationHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  flex-wrap: wrap;
+  gap: 10px;
+
+  @media (max-width: $breakpoint-mobile) {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+.applicationContest {
+  font-size: 18px;
+  font-weight: 600;
+  color: $primary;
+
+  @media (max-width: $breakpoint-mobile) {
+    font-size: 16px;
+  }
+}
+
+.applicationStatus {
+  padding: 6px 12px;
+  border-radius: 30px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.statusPending {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+.statusAccepted {
+  background: #e8f5e8;
+  color: #2e7d32;
+}
+
+.statusRejected {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.applicationDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 14px;
+  color: $text-light;
+  margin-bottom: 15px;
+
+  strong {
+    color: $secondary;
+  }
+
+  a {
+    color: $primary;
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+
+.rejectionReason {
+  color: $error;
+  padding: 10px;
+  background: rgba(214, 19, 36, 0.05);
+  border-radius: 8px;
+  margin-top: 10px;
+}
+
+.applicationActions {
+  display: flex;
+  justify-content: flex-end;
+  border-top: 1px solid $border-light;
+  padding-top: 15px;
+}
+
+.deleteBtn {
+  padding: 8px 16px;
+  background: none;
+  border: 1px solid $error;
+  color: $error;
+  border-radius: 30px;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background: $error;
+    color: white;
+  }
+}
+
+.logoutSection {
+  display: flex;
+  justify-content: flex-end;
+
+  @media (max-width: $breakpoint-mobile) {
+    justify-content: center;
+  }
+}
