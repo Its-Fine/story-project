@@ -22,7 +22,7 @@ const AppContent = () => {
   return (
     <>
       <LanguageSwitcher />
-      {role && location.pathname !== '/' && <Header role={role} />}
+      {role && location.pathname !== '/' && location.pathname !== '/profile' && <Header role={role} />}
       <Routes>
         <Route path="/" element={<MainPage />} />
         <Route path="/application/:contestId" element={
