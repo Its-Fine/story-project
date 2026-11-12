@@ -3,6 +3,7 @@ import { DecorLines } from '../../components/Layout/DecorLines';
 import { Button } from '../../components/UI/Button';
 import { adminApi, AdminApplication, AdminUser, AdminWork } from '../../api/admin';
 import { getRoleLabel } from '../../utils/roleLabels';
+import { useLanguage } from '../../contexts/LanguageContext';
 import css from './index.module.scss';
 
 type AdminTab = 'overview' | 'applications' | 'users';
@@ -31,6 +32,7 @@ const formatSize = (bytes: number) => {
 };
 
 export const AdminPage = () => {
+  const { t, language } = useLanguage();
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [applications, setApplications] = useState<AdminApplication[]>([]);
@@ -48,7 +50,7 @@ export const AdminPage = () => {
   const loadDashboard = useCallback(async () => {
     const token = getToken();
     if (!token) {
-      setError('Сессия администратора отсутствует. Войдите снова.');
+      setError(t('Сессия администратора отсутствует. Войдите снова.'));
       setLoading(false);
       return;
     }
@@ -64,7 +66,7 @@ export const AdminPage = () => {
         adminApi.getApplications(token),
       ]);
       const failed = results.find(result => result.error || result.status >= 400);
-      if (failed) throw new Error(failed.error?.message || 'Не удалось загрузить данные панели');
+      if (failed) throw new Error(failed.error?.message || t('Не удалось загрузить данные панели'));
 
       const [usersTotal, applicationsTotal, event, usersResult, applicationsResult] = results;
       setUserCount(usersTotal.data ?? 0);
@@ -90,7 +92,7 @@ export const AdminPage = () => {
     setError('');
     try {
       const result = await adminApi.getUsers(token, email.trim() || undefined);
-      if (result.error || result.status >= 400) throw new Error(result.error?.message || 'Не удалось загрузить пользователей');
+      if (result.error || result.status >= 400) throw new Error(result.error?.message || t('Не удалось загрузить пользователей'));
       setUsers(result.data ?? []);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Ошибка загрузки пользователей');
@@ -107,9 +109,9 @@ export const AdminPage = () => {
     setNotice('');
     try {
       const result = await adminApi.setEventStatus(!eventClosed, token);
-      if (result.error || result.status >= 400) throw new Error(result.error?.message || 'Не удалось изменить статус конкурса');
+      if (result.error || result.status >= 400) throw new Error(result.error?.message || t('Не удалось изменить статус конкурса'));
       setEventClosed(Boolean(result.data?.close));
-      setNotice(result.data?.close ? 'Приём заявок закрыт.' : 'Приём заявок открыт.');
+      setNotice(result.data?.close ? t('Приём заявок закрыт.') : t('Приём заявок открыт.'));
     } catch (actionError) {
       setError(actionError instanceof Error ? actionError.message : 'Ошибка изменения статуса');
     } finally {
@@ -131,7 +133,7 @@ export const AdminPage = () => {
     setError('');
     try {
       const result = await adminApi.getWorks(applicationId, token);
-      if (result.error || result.status >= 400) throw new Error(result.error?.message || 'Не удалось загрузить файлы');
+      if (result.error || result.status >= 400) throw new Error(result.error?.message || t('Не удалось загрузить файлы'));
       setWorksByApplication(previous => ({ ...previous, [applicationId]: result.data ?? [] }));
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Ошибка загрузки файлов');
@@ -148,7 +150,7 @@ export const AdminPage = () => {
     try {
       saveBlob(await adminApi.downloadWork(work.workId, token), work.name || `work-${work.workId}`);
     } catch (downloadError) {
-      setError(downloadError instanceof Error ? downloadError.message : 'Ошибка скачивания файла');
+      setError(downloadError instanceof Error ? downloadError.message : t('Ошибка скачивания файла'));
     } finally {
       setBusy(false);
     }
@@ -162,9 +164,9 @@ export const AdminPage = () => {
     setNotice('');
     try {
       saveBlob(await adminApi.downloadApplicationsReport(token), 'applications_report.xlsx');
-      setNotice('Excel-отчёт скачан.');
+      setNotice(t('Excel-отчёт скачан.'));
     } catch (downloadError) {
-      setError(downloadError instanceof Error ? downloadError.message : 'Ошибка скачивания отчёта');
+      setError(downloadError instanceof Error ? downloadError.message : t('Ошибка скачивания отчёта'));
     } finally {
       setBusy(false);
     }
@@ -176,11 +178,11 @@ export const AdminPage = () => {
       <main className={css.page}>
         <section className={css.hero}>
           <div>
-            <span className={css.eyebrow}>УПРАВЛЕНИЕ КОНКУРСОМ</span>
-            <h1 className={css.title}>Панель администратора</h1>
-            <p className={css.subtitle}>Участники, заявки, работы и настройки приёма.</p>
+            <span className={css.eyebrow}>{t('УПРАВЛЕНИЕ КОНКУРСОМ')}</span>
+            <h1 className={css.title}>{t('Панель администратора')}</h1>
+            <p className={css.subtitle}>{t('Участники, заявки, работы и настройки приёма.')}</p>
           </div>
-          <Button variant="secondary" onClick={downloadReport} disabled={busy}>Скачать Excel-отчёт</Button>
+          <Button variant="secondary" onClick={downloadReport} disabled={busy}>{t('Скачать Excel-отчёт')}</Button>
         </section>
 
         {error && <div className={css.error} role="alert">{error}</div>}
@@ -188,36 +190,36 @@ export const AdminPage = () => {
 
         <section className={css.stats} aria-label="Сводка">
           <article className={css.statCard}>
-            <span className={css.statLabel}>Пользователи</span>
+            <span className={css.statLabel}>{t('Пользователи')}</span>
             <strong className={css.statValue}>{loading ? '…' : userCount}</strong>
           </article>
           <article className={css.statCard}>
-            <span className={css.statLabel}>Заявки</span>
+            <span className={css.statLabel}>{t('Заявки')}</span>
             <strong className={css.statValue}>{loading ? '…' : applicationCount}</strong>
           </article>
           <article className={css.statCard}>
-            <span className={css.statLabel}>Приём заявок</span>
+            <span className={css.statLabel}>{t('Приём заявок')}</span>
             <strong className={`${css.eventState} ${eventClosed ? css.closed : css.open}`}>
               {loading ? '…' : eventClosed ? 'Закрыт' : 'Открыт'}
             </strong>
             <button className={css.textButton} onClick={toggleEvent} disabled={loading || busy}>
-              {eventClosed ? 'Открыть приём' : 'Закрыть приём'}
+              {eventClosed ? t('Открыть приём') : t('Закрыть приём')}
             </button>
           </article>
         </section>
 
         <nav className={css.tabs} aria-label="Разделы панели">
-          <button className={activeTab === 'overview' ? css.activeTab : ''} onClick={() => setActiveTab('overview')}>Обзор</button>
-          <button className={activeTab === 'applications' ? css.activeTab : ''} onClick={() => setActiveTab('applications')}>Заявки</button>
-          <button className={activeTab === 'users' ? css.activeTab : ''} onClick={() => setActiveTab('users')}>Участники</button>
-          <button className={css.refreshButton} onClick={loadDashboard} disabled={loading || busy}>Обновить</button>
+          <button className={activeTab === 'overview' ? css.activeTab : ''} onClick={() => setActiveTab('overview')}>{t('Обзор')}</button>
+          <button className={activeTab === 'applications' ? css.activeTab : ''} onClick={() => setActiveTab('applications')}>{t('Заявки')}</button>
+          <button className={activeTab === 'users' ? css.activeTab : ''} onClick={() => setActiveTab('users')}>{t('Участники')}</button>
+          <button className={css.refreshButton} onClick={loadDashboard} disabled={loading || busy}>{t('Обновить')}</button>
         </nav>
 
         {activeTab === 'overview' && (
           <section className={css.panel}>
             <div className={css.panelHeading}>
-              <div><h2>Последние заявки</h2><p>Первая страница списка — до 100 заявок.</p></div>
-              <button className={css.textButton} onClick={() => setActiveTab('applications')}>Все заявки →</button>
+              <div><h2>{t('Последние заявки')}</h2><p>{t('Первая страница списка — до 100 заявок.')}</p></div>
+              <button className={css.textButton} onClick={() => setActiveTab('applications')}>{t('Все заявки →')}</button>
             </div>
             {loading ? <p className={css.empty}>Загрузка…</p> : applications.length === 0 ? (
               <p className={css.empty}>Пока нет заявок.</p>
@@ -242,8 +244,8 @@ export const AdminPage = () => {
         {activeTab === 'applications' && (
           <section className={css.panel}>
             <div className={css.panelHeading}>
-              <div><h2>Заявки участников</h2><p>Для заявки можно посмотреть работы и скачать файлы.</p></div>
-              <span className={css.resultCount}>{applications.length} из {applicationCount}</span>
+              <div><h2>{t('Заявки участников')}</h2><p>{t('Для заявки можно посмотреть работы и скачать файлы.')}</p></div>
+              <span className={css.resultCount}>{applications.length} {t('из')} {applicationCount}</span>
             </div>
             {loading ? <p className={css.empty}>Загрузка…</p> : applications.length === 0 ? (
               <p className={css.empty}>Заявок пока нет.</p>
@@ -254,7 +256,7 @@ export const AdminPage = () => {
                     <div className={css.applicationTop}>
                       <div><h3>{application.name}</h3><span className={css.muted}>{application.contestName} · {formatDate(application.createdAt)}</span></div>
                       <button className={css.outlineButton} onClick={() => toggleWorks(application.appId)} disabled={busy}>
-                        {expandedApplicationId === application.appId ? 'Скрыть работы' : `Работы (${application.worksCount})`}
+                        {expandedApplicationId === application.appId ? t('Скрыть работы') : `${t('Работы')} (${application.worksCount})`}
                       </button>
                     </div>
                     <div className={css.applicationMeta}>
@@ -267,11 +269,11 @@ export const AdminPage = () => {
                     {expandedApplicationId === application.appId && (
                       <div className={css.worksList}>
                         {(worksByApplication[application.appId] ?? []).length === 0 ? (
-                          <span className={css.muted}>{busy ? 'Загрузка файлов…' : 'В этой заявке нет файлов.'}</span>
+                          <span className={css.muted}>{busy ? t('Загрузка файлов…') : t('В этой заявке нет файлов.')}</span>
                         ) : (worksByApplication[application.appId] ?? []).map(work => (
                           <div className={css.workItem} key={work.workId}>
                             <div><strong>{work.name}</strong><span>{formatSize(work.fileSize)} · {work.broken ? 'Файл повреждён' : 'Доступен'}</span></div>
-                            <button className={css.textButton} onClick={() => downloadFile(work)} disabled={busy || work.broken}>Скачать</button>
+                            <button className={css.textButton} onClick={() => downloadFile(work)} disabled={busy || work.broken}>{t('Скачать')}</button>
                           </div>
                         ))}
                       </div>
@@ -286,13 +288,13 @@ export const AdminPage = () => {
         {activeTab === 'users' && (
           <section className={css.panel}>
             <div className={css.panelHeading}>
-              <div><h2>Участники</h2><p>Поиск по email, роль и количество заявок.</p></div>
-              <span className={css.resultCount}>{users.length} показано · {userCount} всего</span>
+              <div><h2>{t('Участники')}</h2><p>{t('Поиск по email, роль и количество заявок.')}</p></div>
+              <span className={css.resultCount}>{users.length} {t('показано')} · {userCount} {t('всего')}</span>
             </div>
             <form className={css.search} onSubmit={(event) => { event.preventDefault(); void loadUsers(search); }}>
-              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Поиск по email" aria-label="Поиск по email" />
-              <Button variant="primary" type="submit" disabled={busy}>Найти</Button>
-              {search && <button className={css.textButton} type="button" onClick={() => { setSearch(''); void loadUsers(); }}>Сбросить</button>}
+              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t('Поиск по email')} aria-label={t('Поиск по email')} />
+              <Button variant="primary" type="submit" disabled={busy}>{t('Найти')}</Button>
+              {search && <button className={css.textButton} type="button" onClick={() => { setSearch(''); void loadUsers(); }}>{t('Сбросить')}</button>}
             </form>
             {loading ? <p className={css.empty}>Загрузка…</p> : users.length === 0 ? (
               <p className={css.empty}>Пользователи не найдены.</p>
@@ -302,8 +304,8 @@ export const AdminPage = () => {
                   <article className={css.userRow} key={user.userId}>
                     <div className={css.avatar}>{`${user.firstName?.[0] ?? ''}${user.lastName?.[0] ?? ''}` || 'У'}</div>
                     <div className={css.userIdentity}><strong>{user.firstName} {user.lastName}</strong><span>{user.email}</span></div>
-                    <span className={`${css.roleBadge} ${user.role === 'ADMIN' ? css.adminBadge : ''}`}>{getRoleLabel(user.role)}</span>
-                    <span className={css.userApplications}>{user.applicationsCount} заявок</span>
+                    <span className={`${css.roleBadge} ${user.role === 'ADMIN' ? css.adminBadge : ''}`}>{t(getRoleLabel(user.role))}</span>
+                    <span className={css.userApplications}>{user.applicationsCount} {t('заявок')}</span>
                   </article>
                 ))}
               </div>
