@@ -12,7 +12,7 @@ import css from './index.module.scss';
 
 export const ProfilePage = () => {
   const navigate = useNavigate();
-  const { role } = useAuth();
+  const { role, signOut } = useAuth();
   const { t } = useLanguage();
   const [account, setAccount] = useState<AccountData | null>(null);
   const [applications, setApplications] = useState<Application[]>([]);
@@ -38,27 +38,6 @@ export const ProfilePage = () => {
     else if (response.status >= 400) setError(response.error?.message || t('Ошибка при загрузке заявок'));
   }, [navigate, t]);
 
-  const loadAccount = useCallback(async () => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      navigate('/', { replace: true });
-      return;
-    }
-
-    try {
-      const response = await usersApi.getAccountData(token);
-      if (!response.data) {
-        throw new Error(response.error?.message || t('Не удалось загрузить профиль'));
-      }
-      setAccount(response.data);
-      setProfileDraft({
-        firstName: response.data.firstName ?? '',
-        lastName: response.data.lastName ?? '',
-      });
-    } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : t('Не удалось загрузить профиль'));
-    }
-  }, [navigate, t]);
 
   useEffect(() => {
     let active = true;
@@ -152,9 +131,8 @@ export const ProfilePage = () => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
+    signOut();
     navigate('/', { replace: true });
-    window.location.reload();
   };
 
   const handleDeleteApplication = async (id: number) => {
@@ -209,9 +187,10 @@ export const ProfilePage = () => {
       <main className={css.container}>
         <section className={css.header}>
           <h1 className={css.title}>{t('Личный кабинет')}</h1>
-          {role === 'PARTICIPANT' && (
-            <Button variant="secondary" onClick={goToApplication}>+ {t('Подать заявку')}</Button>
-          )}
+          <div className={css.headerActions}>
+            {role === 'PARTICIPANT' && <Button variant="secondary" onClick={goToApplication}>+ {t('Подать заявку')}</Button>}
+            <Button variant="secondary" onClick={handleLogout}>{t('Выйти')}</Button>
+          </div>
         </section>
 
         <section className={css.profileSummary}>
@@ -300,7 +279,6 @@ export const ProfilePage = () => {
             ))}
           </div>
         )}
-        <div className={css.logoutSection}><Button variant="danger" onClick={handleLogout}>{t('Выйти')}</Button></div>
       </main>
     </>
   );
