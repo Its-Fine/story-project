@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { MainPage } from './pages/MainPage';
 import { ApplicationPage } from './pages/ApplicationPage';
@@ -6,14 +6,22 @@ import { ProfilePage } from './pages/ProfilePage';
 import { AdminPage } from './pages/AdminPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Header } from './components/Layout/Header';
-import { authApi } from './api/auth';
+import { LanguageSwitcher } from './components/Layout/LanguageSwitcher';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { LanguageProvider } from './contexts/LanguageContext';
 import './styles/global.scss';
 
-function AppRoutes({ role }: { role: string | null }) {
+const AppContent = () => {
+  const { role, initialized } = useAuth();
   const location = useLocation();
+
+  if (!initialized) {
+    return <div className="app-loading">Загрузка...</div>;
+  }
 
   return (
     <>
+      <LanguageSwitcher />
       {role && location.pathname !== '/' && <Header role={role} />}
       <Routes>
         <Route path="/" element={<MainPage />} />
@@ -36,39 +44,16 @@ function AppRoutes({ role }: { role: string | null }) {
       </Routes>
     </>
   );
-}
+};
 
 function App() {
-  const [role, setRole] = useState<string | null>(null);
-  const [initialized, setInitialized] = useState(false);
-
-  useEffect(() => {
-    const t = localStorage.getItem('token');
-    if (t) {
-      authApi.me(t)
-        .then((res) => {
-          if (res.data?.role) {
-            setRole(res.data.role);
-          }
-          setInitialized(true);
-        })
-        .catch(() => {
-          localStorage.removeItem('token');
-          setRole(null);
-          setInitialized(true);
-        });
-    } else {
-      setInitialized(true);
-    }
-  }, []);
-
-  if (!initialized) {
-    return null;
-  }
-
   return (
     <BrowserRouter>
-      <AppRoutes role={role} />
+      <AuthProvider>
+        <LanguageProvider>
+          <AppContent />
+        </LanguageProvider>
+      </AuthProvider>
     </BrowserRouter>
   );
 }
