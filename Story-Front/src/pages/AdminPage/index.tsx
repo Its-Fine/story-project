@@ -15,17 +15,19 @@ const saveBlob = (blob: Blob, fileName: string) => {
   const link = document.createElement('a');
   link.href = url;
   link.download = fileName;
+  document.body.appendChild(link);
   link.click();
-  URL.revokeObjectURL(url);
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 };
 
-const formatDate = (value?: string, locale = 'ru-RU') => {
+const formatDate = (value: string | undefined, locale: string) => {
   if (!value) return '—';
-  const date = new Date(value.replace(' ', 'T');
+  const date = new Date(value.replace(' ', 'T'));
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString(locale);
 };
 
-const formatSize = (bytes: number, language: 'ru' | 'en' = 'ru') => {
+const formatSize = (bytes: number, language: 'ru' | 'en') => {
   if (bytes < 1024) return `${bytes} ${language === 'en' ? 'B' : 'Б'}`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} ${language === 'en' ? 'KB' : 'КБ'}`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} ${language === 'en' ? 'MB' : 'МБ'}`;
@@ -33,6 +35,7 @@ const formatSize = (bytes: number, language: 'ru' | 'en' = 'ru') => {
 
 export const AdminPage = () => {
   const { t, language } = useLanguage();
+  const locale = language === 'en' ? 'en-US' : 'ru-RU';
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [applications, setApplications] = useState<AdminApplication[]>([]);
@@ -66,7 +69,9 @@ export const AdminPage = () => {
         adminApi.getApplications(token),
       ]);
       const failed = results.find(result => result.error || result.status >= 400);
-      if (failed) throw new Error(failed.error?.message || t('Не удалось загрузить данные панели');
+      if (failed) {
+        throw new Error(failed.error?.message || t('Не удалось загрузить данные панели'));
+      }
 
       const [usersTotal, applicationsTotal, event, usersResult, applicationsResult] = results;
       setUserCount(usersTotal.data ?? 0);
@@ -75,7 +80,7 @@ export const AdminPage = () => {
       setUsers(usersResult.data ?? []);
       setApplications(applicationsResult.data ?? []);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : t('Ошибка загрузки панели администратора');
+      setError(loadError instanceof Error ? loadError.message : t('Ошибка загрузки панели администратора'));
     } finally {
       setLoading(false);
     }
@@ -92,10 +97,12 @@ export const AdminPage = () => {
     setError('');
     try {
       const result = await adminApi.getUsers(token, email.trim() || undefined);
-      if (result.error || result.status >= 400) throw new Error(result.error?.message || t('Не удалось загрузить пользователей');
+      if (result.error || result.status >= 400) {
+        throw new Error(result.error?.message || t('Не удалось загрузить пользователей'));
+      }
       setUsers(result.data ?? []);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : t('Ошибка загрузки пользователей');
+      setError(loadError instanceof Error ? loadError.message : t('Ошибка загрузки пользователей'));
     } finally {
       setBusy(false);
     }
@@ -109,11 +116,13 @@ export const AdminPage = () => {
     setNotice('');
     try {
       const result = await adminApi.setEventStatus(!eventClosed, token);
-      if (result.error || result.status >= 400) throw new Error(result.error?.message || t('Не удалось изменить статус конкурса');
+      if (result.error || result.status >= 400) {
+        throw new Error(result.error?.message || t('Не удалось изменить статус конкурса'));
+      }
       setEventClosed(Boolean(result.data?.close));
       setNotice(result.data?.close ? t('Приём заявок закрыт.') : t('Приём заявок открыт.'));
     } catch (actionError) {
-      setError(actionError instanceof Error ? actionError.message : t('Ошибка изменения статуса');
+      setError(actionError instanceof Error ? actionError.message : t('Ошибка изменения статуса'));
     } finally {
       setBusy(false);
     }
@@ -133,10 +142,12 @@ export const AdminPage = () => {
     setError('');
     try {
       const result = await adminApi.getWorks(applicationId, token);
-      if (result.error || result.status >= 400) throw new Error(result.error?.message || t('Не удалось загрузить файлы');
+      if (result.error || result.status >= 400) {
+        throw new Error(result.error?.message || t('Не удалось загрузить файлы'));
+      }
       setWorksByApplication(previous => ({ ...previous, [applicationId]: result.data ?? [] }));
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : t('Ошибка загрузки файлов');
+      setError(loadError instanceof Error ? loadError.message : t('Ошибка загрузки файлов'));
     } finally {
       setBusy(false);
     }
@@ -148,9 +159,10 @@ export const AdminPage = () => {
     setBusy(true);
     setError('');
     try {
-      saveBlob(await adminApi.downloadWork(work.workId, token), work.name || `work-${work.workId}`);
+      const blob = await adminApi.downloadWork(work.workId, token);
+      saveBlob(blob, work.name || `work-${work.workId}`);
     } catch (downloadError) {
-      setError(downloadError instanceof Error ? downloadError.message : t('Ошибка скачивания файла');
+      setError(downloadError instanceof Error ? downloadError.message : t('Ошибка скачивания файла'));
     } finally {
       setBusy(false);
     }
@@ -163,10 +175,11 @@ export const AdminPage = () => {
     setError('');
     setNotice('');
     try {
-      saveBlob(await adminApi.downloadApplicationsReport(token), 'applications_report.xlsx');
-      setNotice(t('Excel-отчёт скачан.');
+      const blob = await adminApi.downloadApplicationsReport(token);
+      saveBlob(blob, 'applications_report.xlsx');
+      setNotice(t('Excel-отчёт скачан.'));
     } catch (downloadError) {
-      setError(downloadError instanceof Error ? downloadError.message : t('Ошибка скачивания отчёта');
+      setError(downloadError instanceof Error ? downloadError.message : t('Ошибка скачивания отчёта'));
     } finally {
       setBusy(false);
     }
@@ -212,7 +225,7 @@ export const AdminPage = () => {
           <button className={activeTab === 'overview' ? css.activeTab : ''} onClick={() => setActiveTab('overview')}>{t('Обзор')}</button>
           <button className={activeTab === 'applications' ? css.activeTab : ''} onClick={() => setActiveTab('applications')}>{t('Заявки')}</button>
           <button className={activeTab === 'users' ? css.activeTab : ''} onClick={() => setActiveTab('users')}>{t('Участники')}</button>
-          <button className={css.refreshButton} onClick={loadDashboard} disabled={loading || busy}>{t('Обновить')}</button>
+          <button className={css.refreshButton} onClick={() => void loadDashboard()} disabled={loading || busy}>{t('Обновить')}</button>
         </nav>
 
         {activeTab === 'overview' && (
@@ -230,7 +243,7 @@ export const AdminPage = () => {
                     <div className={css.recentIcon}>З</div>
                     <div className={css.recentText}>
                       <strong>{application.name}</strong>
-                      <span>{application.contestName} · {formatDate(application.createdAt, language === 'en' ? 'en-US' : 'ru-RU')}</span>
+                      <span>{application.contestName} · {formatDate(application.createdAt, locale)}</span>
                     </div>
                     <span className={css.fileCount}>{application.worksCount} {t('файлов')}</span>
                   </article>
@@ -254,8 +267,11 @@ export const AdminPage = () => {
                 {applications.map(application => (
                   <article className={css.applicationCard} key={application.appId}>
                     <div className={css.applicationTop}>
-                      <div><h3>{application.name}</h3><span className={css.muted}>{application.contestName} · {formatDate(application.createdAt)}</span></div>
-                      <button className={css.outlineButton} onClick={() => toggleWorks(application.appId)} disabled={busy}>
+                      <div>
+                        <h3>{application.name}</h3>
+                        <span className={css.muted}>{application.contestName} · {formatDate(application.createdAt, locale)}</span>
+                      </div>
+                      <button className={css.outlineButton} onClick={() => void toggleWorks(application.appId)} disabled={busy}>
                         {expandedApplicationId === application.appId ? t('Скрыть работы') : `${t('Работы')} (${application.worksCount})`}
                       </button>
                     </div>
@@ -272,8 +288,11 @@ export const AdminPage = () => {
                           <span className={css.muted}>{busy ? t('Загрузка файлов…') : t('В этой заявке нет файлов.')}</span>
                         ) : (worksByApplication[application.appId] ?? []).map(work => (
                           <div className={css.workItem} key={work.workId}>
-                            <div><strong>{work.name}</strong><span>{formatSize(work.fileSize, language)} · {work.broken ? 'Файл повреждён' : 'Доступен'}</span></div>
-                            <button className={css.textButton} onClick={() => downloadFile(work)} disabled={busy || work.broken}>{t('Скачать')}</button>
+                            <div>
+                              <strong>{work.name}</strong>
+                              <span>{formatSize(work.fileSize, language)} · {work.broken ? t('Файл повреждён') : t('Доступен')}</span>
+                            </div>
+                            <button className={css.textButton} onClick={() => void downloadFile(work)} disabled={busy || work.broken}>{t('Скачать')}</button>
                           </div>
                         ))}
                       </div>
@@ -291,19 +310,22 @@ export const AdminPage = () => {
               <div><h2>{t('Участники')}</h2><p>{t('Поиск по email, роль и количество заявок.')}</p></div>
               <span className={css.resultCount}>{users.length} {t('показано')} · {userCount} {t('всего')}</span>
             </div>
-            <form className={css.search} onSubmit={(event) => { event.preventDefault(); void loadUsers(search); }}>
-              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t('Поиск по email')} aria-label={t('Поиск по email')} />
+            <form className={css.search} onSubmit={event => { event.preventDefault(); void loadUsers(search); }}>
+              <input value={search} onChange={event => setSearch(event.target.value)} placeholder={t('Поиск по email')} aria-label={t('Поиск по email')} />
               <Button variant="primary" type="submit" disabled={busy}>{t('Найти')}</Button>
               {search && <button className={css.textButton} type="button" onClick={() => { setSearch(''); void loadUsers(); }}>{t('Сбросить')}</button>}
             </form>
-            {loading ? <p className={css.empty}>Загрузка…</p> : users.length === 0 ? (
-              <p className={css.empty}>{t('{t('Пользователи не найдены.')}')}</p>
+            {loading ? <p className={css.empty}>{t('Загрузка…')}</p> : users.length === 0 ? (
+              <p className={css.empty}>{t('Пользователи не найдены.')}</p>
             ) : (
               <div className={css.userList}>
                 {users.map(user => (
                   <article className={css.userRow} key={user.userId}>
                     <div className={css.avatar}>{`${user.firstName?.[0] ?? ''}${user.lastName?.[0] ?? ''}` || 'У'}</div>
-                    <div className={css.userIdentity}><strong>{user.firstName} {user.lastName}</strong><span>{user.email}</span></div>
+                    <div className={css.userIdentity}>
+                      <strong>{user.firstName} {user.lastName}</strong>
+                      <span>{user.email}</span>
+                    </div>
                     <span className={`${css.roleBadge} ${user.role === 'ADMIN' ? css.adminBadge : ''}`}>{t(getRoleLabel(user.role))}</span>
                     <span className={css.userApplications}>{user.applicationsCount} {t('заявок')}</span>
                   </article>
