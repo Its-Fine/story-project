@@ -175,6 +175,16 @@ const english: Record<string, string> = {
   'Заявка создана. Загружаем файлы...': 'Application created. Uploading files...',
   'Файл не загружен, черновик заявки удалён. Проверьте формат и повторите.': 'File upload failed. The draft application was deleted. Check the file format and try again.',
   'Заявка отправлена!': 'Application submitted!',
+  'Графический дизайн (плакат, календарь, открытка, упаковка и др.)': 'Graphic design (posters, calendars, postcards, packaging, etc.)',
+  'Иллюстрация (авторская графика, выполненная различными художественными материалами)': 'Illustration (original artwork created using various traditional media)',
+  'Арт-дизайн (проекты, соединяющие в себе принципы дизайн-проектирования и традиционного художественного творчества)': 'Art design (projects combining design principles and traditional artistic practice)',
+  'Туристический сувенир (современное прочтение традиционных ремесел и народных промыслов в сувенирной продукции)': 'Tourist souvenir (a contemporary interpretation of traditional crafts in souvenir products)',
+  'Дизайн костюма (коллекции авторской одежды)': 'Fashion design (original clothing collections)',
+  'Диджитал-арт и цифровая живопись': 'Digital art and digital painting',
+  'Дизайн костюма (коллекции авторской одежды эскизы, макеты и/или готовые изделия одежды, обуви, аксессуаров)': 'Fashion design (original clothing collections, sketches, models and/or finished garments, footwear and accessories)',
+  'Декоративно-прикладное искусство (сохранение народных традиций, творческое осмысление, поиск современных форм и их интерпретация)': 'Arts and crafts (preserving folk traditions, creative interpretation and contemporary forms)',
+  'Диджитал-арт и цифровая живопись (художественно-графические произведения, выполненные с помощью компьютерных технологий и специализированного программного обеспечения)': 'Digital art and painting (artistic and graphic works created with digital tools and specialized software)',
+  'Промышленный дизайн (эскизы, макеты, действующие прототипы промышленных изделий: техника, оборудование, предметы интерьера и городской среды, игрушки, ювелирные изделия, сувенирная продукция и др.)': 'Industrial design (sketches, models and prototypes of equipment, technology, interior and urban objects, toys, jewelry, souvenirs and more)',
 };
 
 interface LanguageContextValue {
