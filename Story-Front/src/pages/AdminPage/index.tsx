@@ -21,7 +21,7 @@ const saveBlob = (blob: Blob, fileName: string) => {
 
 const formatDate = (value?: string, locale = 'ru-RU') => {
   if (!value) return '—';
-  const date = new Date(value.replace(' ', 'T'));
+  const date = new Date(value.replace(' ', 'T');
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString(locale);
 };
 
@@ -50,7 +50,7 @@ export const AdminPage = () => {
   const loadDashboard = useCallback(async () => {
     const token = getToken();
     if (!token) {
-      setError(t(t('Сессия администратора отсутствует. Войдите снова.')));
+      setError(t('Сессия администратора отсутствует. Войдите снова.'));
       setLoading(false);
       return;
     }
@@ -66,7 +66,7 @@ export const AdminPage = () => {
         adminApi.getApplications(token),
       ]);
       const failed = results.find(result => result.error || result.status >= 400);
-      if (failed) throw new Error(failed.error?.message || t('Не удалось загрузить данные панели'));
+      if (failed) throw new Error(failed.error?.message || t('Не удалось загрузить данные панели');
 
       const [usersTotal, applicationsTotal, event, usersResult, applicationsResult] = results;
       setUserCount(usersTotal.data ?? 0);
@@ -75,7 +75,7 @@ export const AdminPage = () => {
       setUsers(usersResult.data ?? []);
       setApplications(applicationsResult.data ?? []);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : t('Ошибка загрузки панели администратора'));
+      setError(loadError instanceof Error ? loadError.message : t('Ошибка загрузки панели администратора');
     } finally {
       setLoading(false);
     }
@@ -92,10 +92,10 @@ export const AdminPage = () => {
     setError('');
     try {
       const result = await adminApi.getUsers(token, email.trim() || undefined);
-      if (result.error || result.status >= 400) throw new Error(result.error?.message || t('Не удалось загрузить пользователей'));
+      if (result.error || result.status >= 400) throw new Error(result.error?.message || t('Не удалось загрузить пользователей');
       setUsers(result.data ?? []);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : t('Ошибка загрузки пользователей'));
+      setError(loadError instanceof Error ? loadError.message : t('Ошибка загрузки пользователей');
     } finally {
       setBusy(false);
     }
@@ -109,11 +109,11 @@ export const AdminPage = () => {
     setNotice('');
     try {
       const result = await adminApi.setEventStatus(!eventClosed, token);
-      if (result.error || result.status >= 400) throw new Error(result.error?.message || t('Не удалось изменить статус конкурса'));
+      if (result.error || result.status >= 400) throw new Error(result.error?.message || t('Не удалось изменить статус конкурса');
       setEventClosed(Boolean(result.data?.close));
-      setNotice(result.data?.close ? t(t('Приём заявок закрыт.')) : t(t('Приём заявок открыт.')));
+      setNotice(result.data?.close ? t('Приём заявок закрыт.') : t('Приём заявок открыт.'));
     } catch (actionError) {
-      setError(actionError instanceof Error ? actionError.message : t('Ошибка изменения статуса'));
+      setError(actionError instanceof Error ? actionError.message : t('Ошибка изменения статуса');
     } finally {
       setBusy(false);
     }
@@ -133,10 +133,10 @@ export const AdminPage = () => {
     setError('');
     try {
       const result = await adminApi.getWorks(applicationId, token);
-      if (result.error || result.status >= 400) throw new Error(result.error?.message || t('Не удалось загрузить файлы'));
+      if (result.error || result.status >= 400) throw new Error(result.error?.message || t('Не удалось загрузить файлы');
       setWorksByApplication(previous => ({ ...previous, [applicationId]: result.data ?? [] }));
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : t('Ошибка загрузки файлов'));
+      setError(loadError instanceof Error ? loadError.message : t('Ошибка загрузки файлов');
     } finally {
       setBusy(false);
     }
@@ -150,7 +150,7 @@ export const AdminPage = () => {
     try {
       saveBlob(await adminApi.downloadWork(work.workId, token), work.name || `work-${work.workId}`);
     } catch (downloadError) {
-      setError(downloadError instanceof Error ? downloadError.message : t('Ошибка скачивания файла'));
+      setError(downloadError instanceof Error ? downloadError.message : t('Ошибка скачивания файла');
     } finally {
       setBusy(false);
     }
@@ -164,9 +164,9 @@ export const AdminPage = () => {
     setNotice('');
     try {
       saveBlob(await adminApi.downloadApplicationsReport(token), 'applications_report.xlsx');
-      setNotice(t('Excel-отчёт скачан.'));
+      setNotice(t('Excel-отчёт скачан.');
     } catch (downloadError) {
-      setError(downloadError instanceof Error ? downloadError.message : t('Ошибка скачивания отчёта'));
+      setError(downloadError instanceof Error ? downloadError.message : t('Ошибка скачивания отчёта');
     } finally {
       setBusy(false);
     }
@@ -247,7 +247,7 @@ export const AdminPage = () => {
               <div><h2>{t('Заявки участников')}</h2><p>{t('Для заявки можно посмотреть работы и скачать файлы.')}</p></div>
               <span className={css.resultCount}>{applications.length} {t('из')} {applicationCount}</span>
             </div>
-            {loading ? <p className={css.empty}>Загрузка…</p> : applications.length === 0 ? (
+            {loading ? <p className={css.empty}>{t('Загрузка…')}</p> : applications.length === 0 ? (
               <p className={css.empty}>{t('Заявок пока нет.')}</p>
             ) : (
               <div className={css.applicationList}>
@@ -297,7 +297,7 @@ export const AdminPage = () => {
               {search && <button className={css.textButton} type="button" onClick={() => { setSearch(''); void loadUsers(); }}>{t('Сбросить')}</button>}
             </form>
             {loading ? <p className={css.empty}>Загрузка…</p> : users.length === 0 ? (
-              <p className={css.empty}>{t('Пользователи не найдены.')}</p>
+              <p className={css.empty}>{t('{t('Пользователи не найдены.')}')}</p>
             ) : (
               <div className={css.userList}>
                 {users.map(user => (
