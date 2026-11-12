@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Input } from '../UI/Input';
 import { Button } from '../UI/Button';
 import { authApi } from '../../api/auth';
+import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import css from './Forms.module.scss';
 
 interface SignInFormProps {
@@ -11,69 +13,52 @@ interface SignInFormProps {
 
 export const SignInForm = ({ showNotification }: SignInFormProps) => {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    email: '',
-    password: ''
-  });
-  const [errors, setErrors] = useState({
-    email: '',
-    password: ''
-  });
+  const { signIn } = useAuth();
+  const { t } = useLanguage();
+  const [formData, setFormData] = useState({ email: '', password: '' });
+  const [errors, setErrors] = useState({ email: '', password: '' });
   const [isLoading, setIsLoading] = useState(false);
 
-  const validateEmail = (email: string): boolean => {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
-  };
+  const validateEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
-    setFormData(prev => ({ ...prev, [id.replace('login-', '')]: value }));
-    setErrors(prev => ({ ...prev, [id.replace('login-', '')]: '' }));
+    const field = id.replace('login-', '');
+    setFormData(previous => ({ ...previous, [field]: value }));
+    setErrors(previous => ({ ...previous, [field]: '' }));
   };
 
-  const validateForm = (): boolean => {
-    const newErrors = {
-      email: '',
-      password: ''
-    };
-    let isValid = true;
-
-    if (!formData.email) {
-      newErrors.email = 'Введите email';
-      isValid = false;
-    } else if (!validateEmail(formData.email)) {
-      newErrors.email = 'Введите корректный email';
-      isValid = false;
-    }
-
-    if (!formData.password) {
-      newErrors.password = 'Введите пароль';
-      isValid = false;
-    }
-
-    setErrors(newErrors);
-    return isValid;
+  const validateForm = () => {
+    const nextErrors = { email: '', password: '' };
+    if (!formData.email.trim()) nextErrors.email = t('Введите email');
+    else if (!validateEmail(formData.email)) nextErrors.email = t('Введите корректный email');
+    if (!formData.password) nextErrors.password = t('Введите пароль');
+    setErrors(nextErrors);
+    return !nextErrors.email && !nextErrors.password;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validateForm()) return;
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!validateForm() || isLoading) return;
 
     setIsLoading(true);
+    try {
+      const response = await authApi.login({
+        email: formData.email.trim(),
+        password: formData.password,
+      });
 
-    const response = await authApi.login({
-      email: formData.email,
-      password: formData.password
-    });
+      if (!response.data?.access_token) {
+        showNotification(t('Ошибка входа. Проверьте email и пароль'), 'error');
+        return;
+      }
 
-    if (response.data?.access_token) {
-      localStorage.setItem('token', response.data.access_token);
-      showNotification('Вход выполнен успешно!', 'success');
-      setTimeout(() => {
-        navigate('/profile');
-      }, 700);
-    } else {
-      showNotification('Ошибка входа. Проверьте email и пароль', 'error');
+      const role = await signIn(response.data.access_token);
+      showNotification(t('Вход выполнен успешно!'), 'success');
+      navigate(role === 'ADMIN' ? '/admin' : '/profile', { replace: true });
+    } catch {
+      showNotification(t('Ошибка входа. Проверьте email и пароль'), 'error');
+    } finally {
       setIsLoading(false);
     }
   };
@@ -81,7 +66,7 @@ export const SignInForm = ({ showNotification }: SignInFormProps) => {
   return (
     <form className={css.form} onSubmit={handleSubmit}>
       <Input
-        label="Email"
+        label={t('Email')}
         type="email"
         id="login-email"
         value={formData.email}
@@ -89,9 +74,8 @@ export const SignInForm = ({ showNotification }: SignInFormProps) => {
         error={errors.email}
         required
       />
-
       <Input
-        label="Пароль"
+        label={t('Пароль')}
         type="password"
         id="login-password"
         value={formData.password}
@@ -99,20 +83,23 @@ export const SignInForm = ({ showNotification }: SignInFormProps) => {
         error={errors.password}
         required
       />
-
       <div className={css.forgotPassword}>
-        <a href="#" onClick={(e) => { e.preventDefault(); showNotification('Функция восстановления пароля будет доступна позже', 'error'); }}>
-          Забыли пароль?
+        <a href="#forgot-password" onClick={(event) => {
+          event.preventDefault();
+          showNotification(t('Функция восстановления пароля будет доступна позже'), 'error');
+        }}>
+          {t('Забыли пароль?')}
         </a>
       </div>
-
       <Button type="submit" variant="primary" disabled={isLoading}>
-        {isLoading ? 'Вход...' : 'Войти'}
+        {isLoading ? t('Вход...') : t('Войти')}
       </Button>
-
       <p className={css.link}>
-        Нет аккаунта?
-        <a href="#" onClick={(e) => { e.preventDefault(); window.location.href = '/'; }}> Зарегистрироваться</a>
+        {t('Нет аккаунта?')}
+        <a href="#register" onClick={(event) => {
+          event.preventDefault();
+          window.dispatchEvent(new CustomEvent('story:auth-tab', { detail: 'register' }));
+        }}> {t('Зарегистрироваться')}</a>
       </p>
     </form>
   );
