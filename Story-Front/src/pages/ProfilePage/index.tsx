@@ -1,133 +1,195 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DecorLines } from '../../components/Layout/DecorLines';
 import { Button } from '../../components/UI/Button';
 import { applicationsApi } from '../../api/applications';
-import { authApi } from '../../api/auth';
+import { usersApi, AccountData } from '../../api/users';
 import { API_BASE_URL } from '../../api/client';
 import { Application, Contest } from '../../api/applications';
+import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import css from './index.module.scss';
 
 export const ProfilePage = () => {
   const navigate = useNavigate();
+  const { role } = useAuth();
+  const { t } = useLanguage();
+  const [account, setAccount] = useState<AccountData | null>(null);
   const [applications, setApplications] = useState<Application[]>([]);
   const [contests, setContests] = useState<Contest[]>([]);
-  const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<string>('');
-  const [error, setError] = useState<string>('');
+  const [filter, setFilter] = useState('');
+  const [error, setError] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileDraft, setProfileDraft] = useState({ firstName: '', lastName: '' });
 
-  const fetchApplications = React.useCallback(async () => {
-    try {
-      setLoading(true);
-      setError('');
-      const token = localStorage.getItem('token');
-
-      if (!token) {
-        navigate('/');
-        return;
-      }
-
-      const response = await applicationsApi.getUserApplications(
-        token
-      );
-
-      if (response.data) {
-        setApplications(response.data);
-      } else if (response.status === 401) {
-        setError('Сессия истекла. Выйдите и войдите снова.');
-      } else if (response.status === 403) {
-        setError('У этой учётной записи нет доступа к заявкам участника.');
-      } else if (response.status >= 400) {
-        setError(response.error?.message || 'Ошибка при загрузке заявок');
-      }
-    } catch (err) {
-      setError('Ошибка при загрузке заявок');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }, [navigate]);
-
-  useEffect(() => {
+  const fetchApplications = useCallback(async () => {
     const token = localStorage.getItem('token');
     if (!token) {
-      navigate('/');
+      navigate('/', { replace: true });
       return;
     }
 
-    Promise.all([authApi.me(token), applicationsApi.getContests(token)])
-      .then(([userResponse, contestsResponse]) => {
-        if (userResponse.data?.role) {
-          setRole(userResponse.data.role);
-        }
-        if (contestsResponse.data) {
-          setContests(contestsResponse.data);
-        }
-      })
-      .catch((err) => {
-        console.error('Ошибка загрузки роли или конкурсов', err);
+    const response = await applicationsApi.getUserApplications(token);
+    if (response.data) setApplications(response.data);
+    else if (response.status === 401) setError(t('Сессия истекла. Выйдите и войдите снова.'));
+    else if (response.status === 403) setError(t('У этой учётной записи нет доступа к заявкам участника.'));
+    else if (response.status >= 400) setError(response.error?.message || t('Ошибка при загрузке заявок'));
+  }, [navigate, t]);
+
+  const loadAccount = useCallback(async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      navigate('/', { replace: true });
+      return;
+    }
+
+    try {
+      const response = await usersApi.getAccountData(token);
+      if (!response.data) {
+        throw new Error(response.error?.message || t('Не удалось загрузить профиль'));
+      }
+      setAccount(response.data);
+      setProfileDraft({
+        firstName: response.data.firstName ?? '',
+        lastName: response.data.lastName ?? '',
       });
-  }, [navigate]);
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : t('Не удалось загрузить профиль'));
+    }
+  }, [navigate, t]);
 
   useEffect(() => {
-    void fetchApplications();
-  }, [fetchApplications]);
+    let active = true;
+    const load = async () => {
+      setLoading(true);
+      setError('');
+      const token = localStorage.getItem('token');
+      if (!token) {
+        navigate('/', { replace: true });
+        return;
+      }
+      try {
+        const [accountResponse, contestsResponse, applicationsResponse] = await Promise.all([
+          usersApi.getAccountData(token),
+          applicationsApi.getContests(token),
+          applicationsApi.getUserApplications(token),
+        ]);
+        if (!active) return;
+        if (accountResponse.data) {
+          setAccount(accountResponse.data);
+          setProfileDraft({
+            firstName: accountResponse.data.firstName ?? '',
+            lastName: accountResponse.data.lastName ?? '',
+          });
+        } else {
+          setError(accountResponse.error?.message || t('Не удалось загрузить профиль'));
+        }
+        if (contestsResponse.data) setContests(contestsResponse.data);
+        if (applicationsResponse.data) setApplications(applicationsResponse.data);
+        else if (applicationsResponse.error) setError(applicationsResponse.error.message);
+      } catch (loadError) {
+        if (active) setError(loadError instanceof Error ? loadError.message : t('Ошибка при загрузке заявок'));
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    void load();
+    return () => { active = false; };
+  }, [navigate, t]);
 
   const goToApplication = () => {
-    if (contests.length === 0) {
-      setError('Список конкурсов пока не загружен. Обновите страницу через несколько секунд.');
+    if (!contests.length) {
+      setError(t('Список конкурсов пока не загружен. Обновите страницу через несколько секунд.'));
       return;
     }
     navigate(`/application/${contests[0].conId}`);
   };
 
-  const handleLogout = async () => {
+  const handleSaveProfile = async (event: React.FormEvent) => {
+    event.preventDefault();
     const token = localStorage.getItem('token');
-    if (token) {
-      await authApi.logout(token);
+    if (!token || savingProfile) return;
+
+    const firstName = profileDraft.firstName.trim();
+    const lastName = profileDraft.lastName.trim();
+    if (!firstName || !lastName) {
+      setError(t('Имя и фамилия не могут быть пустыми'));
+      return;
     }
+
+    setSavingProfile(true);
+    setError('');
+    try {
+      const response = await usersApi.updateAccountData({ firstName, lastName }, token);
+      if (response.status !== 204 && response.status !== 200) {
+        throw new Error(response.error?.message || t('Не удалось сохранить профиль'));
+      }
+      setAccount(previous => previous ? { ...previous, firstName, lastName } : previous);
+      setIsEditing(false);
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : t('Не удалось сохранить профиль'));
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const handleEditProfile = () => {
+    if (!account) return;
+    setProfileDraft({ firstName: account.firstName ?? '', lastName: account.lastName ?? '' });
+    setError('');
+    setIsEditing(true);
+  };
+
+  const handleCancelEdit = () => {
+    setProfileDraft({
+      firstName: account?.firstName ?? '',
+      lastName: account?.lastName ?? '',
+    });
+    setIsEditing(false);
+    setError('');
+  };
+
+  const handleLogout = () => {
     localStorage.removeItem('token');
-    navigate('/');
+    navigate('/', { replace: true });
+    window.location.reload();
   };
 
   const handleDeleteApplication = async (id: number) => {
-    if (!window.confirm('Вы уверены, что хотите удалить заявку?')) return;
-
+    if (!window.confirm(t('Вы уверены, что хотите удалить заявку?'))) return;
     const token = localStorage.getItem('token');
     if (!token) {
       navigate('/');
       return;
     }
-
     try {
       const response = await applicationsApi.deleteApplication(id, token);
-
-      if (response.status === 204) {
-        fetchApplications();
-      }
-    } catch (err) {
-      setError('Ошибка при удалении заявки');
+      if (response.status === 204 || response.status === 200) await fetchApplications();
+      else setError(response.error?.message || t('Ошибка при удалении заявки'));
+    } catch {
+      setError(t('Ошибка при удалении заявки'));
     }
   };
 
   const stats = {
     total: applications.length,
-    pending: applications.filter(a => a.status === 'PENDING').length,
-    accepted: applications.filter(a => a.status === 'ACCEPTED').length,
-    rejected: applications.filter(a => a.status === 'REJECTED').length
+    pending: applications.filter(application => application.status === 'PENDING').length,
+    accepted: applications.filter(application => application.status === 'ACCEPTED').length,
+    rejected: applications.filter(application => application.status === 'REJECTED').length,
   };
 
-  const getStatusText = (status?: string) => {
+  const statusText = (status?: string) => {
     switch (status) {
-      case 'PENDING': return 'На рассмотрении';
-      case 'ACCEPTED': return 'Принята';
-      case 'REJECTED': return 'Отклонена';
-      default: return status || 'Нет данных';
+      case 'PENDING': return t('На рассмотрении');
+      case 'ACCEPTED': return t('Принята');
+      case 'REJECTED': return t('Отклонена');
+      default: return status || t('Нет данных');
     }
   };
 
-  const getStatusClass = (status?: string) => {
+  const statusClass = (status?: string) => {
     switch (status) {
       case 'PENDING': return css.statusPending;
       case 'ACCEPTED': return css.statusAccepted;
@@ -137,133 +199,109 @@ export const ProfilePage = () => {
   };
 
   const getWorkLink = (link: string) => `${API_BASE_URL}${link}`;
-
   const visibleApplications = filter
-    ? applications.filter(app => app.status === filter)
+    ? applications.filter(application => application.status === filter)
     : applications;
 
   return (
     <>
       <DecorLines />
-      <div className={css.container}>
-        <div className={css.header}>
-          <h1 className={css.title}>Личный кабинет</h1>
+      <main className={css.container}>
+        <section className={css.header}>
+          <h1 className={css.title}>{t('Личный кабинет')}</h1>
           {role === 'PARTICIPANT' && (
-            <div className={css.headerButtons}>
-              <Button variant="primary" onClick={goToApplication}>
-                + Подать заявку
-              </Button>
-            </div>
+            <Button variant="secondary" onClick={goToApplication}>+ {t('Подать заявку')}</Button>
           )}
-        </div>
+        </section>
 
-        <div className={css.stats}>
-          <div className={css.statCard}>
-            <div className={css.statValue}>{stats.total}</div>
-            <div className={css.statLabel}>Всего заявок</div>
-          </div>
-          <div className={css.statCard}>
-            <div className={css.statValue}>{stats.pending}</div>
-            <div className={css.statLabel}>На рассмотрении</div>
-          </div>
-          <div className={css.statCard}>
-            <div className={css.statValue}>{stats.accepted}</div>
-            <div className={css.statLabel}>Принято</div>
-          </div>
-          <div className={css.statCard}>
-            <div className={css.statValue}>{stats.rejected}</div>
-            <div className={css.statLabel}>Отклонено</div>
-          </div>
-        </div>
+        <section className={css.profileSummary}>
+          {isEditing ? (
+            <form className={css.profileEditForm} onSubmit={handleSaveProfile}>
+              <div className={css.profileFields}>
+                <label>
+                  <span>{t('Имя')}</span>
+                  <input value={profileDraft.firstName} maxLength={50} onChange={event => setProfileDraft(previous => ({ ...previous, firstName: event.target.value }))} autoComplete="given-name" required />
+                </label>
+                <label>
+                  <span>{t('Фамилия')}</span>
+                  <input value={profileDraft.lastName} maxLength={50} onChange={event => setProfileDraft(previous => ({ ...previous, lastName: event.target.value }))} autoComplete="family-name" required />
+                </label>
+              </div>
+              <div className={css.profileEditActions}>
+                <Button type="submit" variant="primary" disabled={savingProfile}>{savingProfile ? t('Сохранение...') : t('Сохранить')}</Button>
+                <Button type="button" variant="secondary" onClick={handleCancelEdit} disabled={savingProfile}>{t('Отмена')}</Button>
+              </div>
+            </form>
+          ) : (
+            <>
+              <div className={css.profileIdentity}>
+                <strong>{t('Пользователь')}: {account ? `${account.firstName} ${account.lastName}`.trim() : '—'}</strong>
+                <span>{t('Email')}: {account?.email ?? '—'}</span>
+              </div>
+              <Button variant="secondary" onClick={handleEditProfile} disabled={!account}>{t('Редактировать профиль')}</Button>
+            </>
+          )}
+        </section>
+
+        {error && <div className={css.errorMessage} role="alert">{error}</div>}
+
+        <section className={css.stats}>
+          <article className={css.statCard}><div className={css.statValue}>{loading ? '…' : stats.total}</div><div className={css.statLabel}>{t('Всего заявок')}</div></article>
+          <article className={css.statCard}><div className={css.statValue}>{loading ? '…' : stats.pending}</div><div className={css.statLabel}>{t('На рассмотрении')}</div></article>
+          <article className={css.statCard}><div className={css.statValue}>{loading ? '…' : stats.accepted}</div><div className={css.statLabel}>{t('Принято')}</div></article>
+          <article className={css.statCard}><div className={css.statValue}>{loading ? '…' : stats.rejected}</div><div className={css.statLabel}>{t('Отклонено')}</div></article>
+        </section>
 
         <div className={css.filters}>
-          <select
-            className={css.filterSelect}
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-          >
-            <option value="">Все заявки</option>
-            <option value="PENDING">На рассмотрении</option>
-            <option value="ACCEPTED">Принятые</option>
-            <option value="REJECTED">Отклоненные</option>
+          <select className={css.filterSelect} value={filter} onChange={event => setFilter(event.target.value)}>
+            <option value="">{t('Все заявки')}</option>
+            <option value="PENDING">{t('На рассмотрении')}</option>
+            <option value="ACCEPTED">{t('Принятые')}</option>
+            <option value="REJECTED">{t('Отклоненные')}</option>
           </select>
         </div>
 
-        <h2 className={css.sectionTitle}>Мои заявки</h2>
-
-        {error && <div className={css.errorMessage}>{error}</div>}
-
-        {loading ? (
-          <div className={css.loadingState}>Загрузка...</div>
-        ) : visibleApplications.length === 0 ? (
+        <h2 className={css.sectionTitle}>{t('Мои заявки')}</h2>
+        {loading ? <div className={css.loadingState}>{t('Загрузка...')}</div> : visibleApplications.length === 0 ? (
           <div className={css.emptyState}>
-            <p className={css.emptyText}>
-              {applications.length === 0
-                ? 'У вас пока нет заявок'
-                : 'По выбранному фильтру заявок нет'}
-            </p>
-            {applications.length === 0 && role === 'PARTICIPANT' && (
-              <Button variant="primary" onClick={goToApplication}>
-                Подать первую заявку
-              </Button>
-            )}
+            <p className={css.emptyText}>{applications.length === 0 ? t('У вас пока нет заявок') : t('По выбранному фильтру заявок нет')}</p>
+            {applications.length === 0 && role === 'PARTICIPANT' && <Button variant="primary" onClick={goToApplication}>{t('Подать первую заявку')}</Button>}
           </div>
         ) : (
           <div className={css.applicationsList}>
-            {visibleApplications.map(app => (
-              <div key={app.appId} className={css.applicationCard}>
+            {visibleApplications.map(application => (
+              <article key={application.appId} className={css.applicationCard}>
                 <div className={css.applicationHeader}>
-                  <span className={css.applicationContest}>{app.contestName}</span>
-                  <span className={`${css.applicationStatus} ${getStatusClass(app.status)}`}>
-                    {getStatusText(app.status)}
-                  </span>
+                  <span className={css.applicationContest}>{application.contestName}</span>
+                  {application.status && <span className={`${css.applicationStatus} ${statusClass(application.status)}`}>{statusText(application.status)}</span>}
                 </div>
                 <div className={css.applicationDetails}>
-                  <div><strong>Работа:</strong> {app.name}</div>
-                  <div><strong>Описание:</strong> {app.description}</div>
-                  <div><strong>Файлов:</strong> {app.worksCount}</div>
-                  {app.linksToWorks && app.linksToWorks.length > 0 && (
+                  <div><strong>{t('Работа:')}</strong> {application.name}</div>
+                  <div><strong>{t('Описание:')}</strong> {application.description}</div>
+                  <div><strong>{t('Файлов:')}</strong> {application.worksCount}</div>
+                  {!!application.linksToWorks?.length && (
                     <div className={css.applicationFiles}>
-                      <strong>Файлы:</strong>{' '}
-                      {app.linksToWorks.map((link, index) => (
-                        <a
-                          key={link}
-                          href={getWorkLink(link)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          Скачать {app.linksToWorks!.length > 1 ? `№${index + 1}` : ''}
+                      <strong>{t('Файлы:')}</strong>{' '}
+                      {application.linksToWorks.map((link, index) => (
+                        <a key={`${link}-${index}`} href={getWorkLink(link)} target="_blank" rel="noopener noreferrer">
+                          {t('Скачать')} {application.linksToWorks!.length > 1 ? `№${index + 1}` : ''}
                         </a>
                       ))}
                     </div>
                   )}
-                  {app.rejectionReason && (
-                    <div className={css.rejectionReason}>
-                      <strong>Причина отказа:</strong> {app.rejectionReason}
-                    </div>
-                  )}
+                  {application.rejectionReason && <div className={css.rejectionReason}><strong>{t('Причина отказа:')}</strong> {application.rejectionReason}</div>}
                 </div>
-                {(app.status === 'PENDING' || !app.status) && (
+                {(application.status === 'PENDING' || !application.status) && (
                   <div className={css.applicationActions}>
-                    <button
-                      className={css.deleteBtn}
-                      onClick={() => handleDeleteApplication(app.appId)}
-                    >
-                      Удалить
-                    </button>
+                    <button className={css.deleteBtn} onClick={() => void handleDeleteApplication(application.appId)}>{t('Удалить')}</button>
                   </div>
                 )}
-              </div>
+              </article>
             ))}
           </div>
         )}
-
-        <div className={css.logoutSection}>
-          <Button variant="danger" onClick={handleLogout}>
-            Выйти
-          </Button>
-        </div>
-      </div>
+        <div className={css.logoutSection}><Button variant="danger" onClick={handleLogout}>{t('Выйти')}</Button></div>
+      </main>
     </>
   );
 };
