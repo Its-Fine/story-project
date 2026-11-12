@@ -37,6 +37,12 @@ public class ApplicationEntity {
     @Column(name = "is_curator", nullable = false)
     private Boolean isCurator;
 
+    @Column(name = "status", nullable = false)
+    private String status = "PENDING";
+
+    @Column(name = "rejection_reason", columnDefinition = "TEXT")
+    private String rejectionReason = null;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Input } from '../UI/Input';
 import { Button } from '../UI/Button';
 import { authApi } from '../../api/auth';
@@ -9,6 +10,7 @@ interface SignInFormProps {
 }
 
 export const SignInForm = ({ showNotification }: SignInFormProps) => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -68,7 +70,7 @@ export const SignInForm = ({ showNotification }: SignInFormProps) => {
       localStorage.setItem('token', response.data.access_token);
       showNotification('Вход выполнен успешно!', 'success');
       setTimeout(() => {
-        window.location.assign('/profile');
+        navigate('/profile');
       }, 700);
     } else {
       showNotification('Ошибка входа. Проверьте email и пароль', 'error');

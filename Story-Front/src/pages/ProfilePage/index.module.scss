@@ -1,5 +1,9 @@
 @import '../../styles/variables.scss';
 
+body {
+  background: #ffffff;
+}
+
 .container {
   max-width: 1200px;
   margin: 0 auto;
@@ -49,7 +53,7 @@
 
 .stats {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 20px;
   margin-bottom: 30px;
 
@@ -295,5 +299,21 @@
 
   @media (max-width: $breakpoint-mobile) {
     justify-content: center;
+  }
+}
+.applicationFiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+
+  a {
+    color: $primary;
+    text-decoration: underline;
+    margin-right: 8px;
+
+    &:hover {
+      opacity: 0.8;
+    }
   }
 }
