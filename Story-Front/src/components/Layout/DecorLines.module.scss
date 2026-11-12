@@ -1,19 +1,7 @@
 @import '../../styles/variables.scss';
 
 .decorLeft {
-  position: fixed;
-  left: 0;
-  top: 0;
-  height: 100vh;
-  height: 100dvh;
-  width: 120px;
-  background: $primary-hover;
-  pointer-events: none;
-  z-index: 1;
-
-  @media (max-width: $breakpoint-mobile) {
-    width: 60px;
-  }
+  display: none;
 }
 
 .decorRight {
@@ -22,12 +10,12 @@
   top: 0;
   height: 100vh;
   height: 100dvh;
-  width: 120px;
+  width: 88px;
   background: $primary-hover;
   pointer-events: none;
   z-index: 1;
 
   @media (max-width: $breakpoint-mobile) {
-    width: 60px;
+    width: 64px;
   }
 }
