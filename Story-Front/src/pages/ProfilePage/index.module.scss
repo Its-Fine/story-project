@@ -321,8 +321,85 @@
 .applicationActions {
   display: flex;
   justify-content: flex-end;
+  gap: 10px;
   border-top: 1px solid $border-light;
   padding-top: 10px;
+}
+
+.editBtn {
+  padding: 7px 13px;
+  background: none;
+  border: 1px solid $primary;
+  color: $primary;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 11px;
+  transition: all 0.2s;
+
+  &:hover:not(:disabled) {
+    background: $primary;
+    color: white;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: wait;
+  }
+}
+
+.applicationEditForm {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 0;
+  border-top: 1px solid $border-light;
+
+  label {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 5px;
+    color: $secondary;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  input, textarea {
+    width: 100%;
+    min-width: 0;
+    padding: 9px 11px;
+    border: 1px solid $border;
+    border-radius: 8px;
+    background: white;
+    color: $secondary;
+    font: inherit;
+    font-size: 13px;
+    resize: vertical;
+
+    &:focus {
+      outline: 2px solid rgba(214, 19, 36, 0.14);
+      border-color: $primary;
+    }
+  }
+}
+
+.applicationEditRow {
+  display: flex;
+  gap: 12px;
+
+  @media (max-width: $breakpoint-mobile) {
+    flex-direction: column;
+  }
+}
+
+.applicationEditActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+
+  @media (max-width: $breakpoint-mobile) {
+    flex-direction: column;
+  }
 }
 
 .deleteBtn {
