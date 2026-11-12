@@ -4,6 +4,7 @@ import { DecorLines } from '../../components/Layout/DecorLines';
 import { Button } from '../../components/UI/Button';
 import { applicationsApi } from '../../api/applications';
 import { authApi } from '../../api/auth';
+import { API_BASE_URL } from '../../api/client';
 import { Application, Contest } from '../../api/applications';
 import css from './index.module.scss';
 
@@ -13,6 +14,7 @@ export const ProfilePage = () => {
   const [contests, setContests] = useState<Contest[]>([]);
   const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<string>('');
   const [error, setError] = useState<string>('');
 
   const fetchApplications = React.useCallback(async () => {
@@ -109,7 +111,36 @@ export const ProfilePage = () => {
     }
   };
 
-  const totalWorks = applications.reduce((sum, application) => sum + application.worksCount, 0);
+  const stats = {
+    total: applications.length,
+    pending: applications.filter(a => a.status === 'PENDING').length,
+    accepted: applications.filter(a => a.status === 'ACCEPTED').length,
+    rejected: applications.filter(a => a.status === 'REJECTED').length
+  };
+
+  const getStatusText = (status?: string) => {
+    switch (status) {
+      case 'PENDING': return 'На рассмотрении';
+      case 'ACCEPTED': return 'Принята';
+      case 'REJECTED': return 'Отклонена';
+      default: return status || 'Нет данных';
+    }
+  };
+
+  const getStatusClass = (status?: string) => {
+    switch (status) {
+      case 'PENDING': return css.statusPending;
+      case 'ACCEPTED': return css.statusAccepted;
+      case 'REJECTED': return css.statusRejected;
+      default: return '';
+    }
+  };
+
+  const getWorkLink = (link: string) => `${API_BASE_URL}${link}`;
+
+  const visibleApplications = filter
+    ? applications.filter(app => app.status === filter)
+    : applications;
 
   return (
     <>
@@ -128,13 +159,34 @@ export const ProfilePage = () => {
 
         <div className={css.stats}>
           <div className={css.statCard}>
-            <div className={css.statValue}>{applications.length}</div>
+            <div className={css.statValue}>{stats.total}</div>
             <div className={css.statLabel}>Всего заявок</div>
           </div>
           <div className={css.statCard}>
-            <div className={css.statValue}>{totalWorks}</div>
-            <div className={css.statLabel}>Файлов в заявках</div>
+            <div className={css.statValue}>{stats.pending}</div>
+            <div className={css.statLabel}>На рассмотрении</div>
           </div>
+          <div className={css.statCard}>
+            <div className={css.statValue}>{stats.accepted}</div>
+            <div className={css.statLabel}>Принято</div>
+          </div>
+          <div className={css.statCard}>
+            <div className={css.statValue}>{stats.rejected}</div>
+            <div className={css.statLabel}>Отклонено</div>
+          </div>
+        </div>
+
+        <div className={css.filters}>
+          <select
+            className={css.filterSelect}
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+          >
+            <option value="">Все заявки</option>
+            <option value="PENDING">На рассмотрении</option>
+            <option value="ACCEPTED">Принятые</option>
+            <option value="REJECTED">Отклоненные</option>
+          </select>
         </div>
 
         <h2 className={css.sectionTitle}>Мои заявки</h2>
@@ -143,10 +195,14 @@ export const ProfilePage = () => {
 
         {loading ? (
           <div className={css.loadingState}>Загрузка...</div>
-        ) : applications.length === 0 ? (
+        ) : visibleApplications.length === 0 ? (
           <div className={css.emptyState}>
-            <p className={css.emptyText}>У вас пока нет заявок</p>
-            {role === 'PARTICIPANT' && (
+            <p className={css.emptyText}>
+              {applications.length === 0
+                ? 'У вас пока нет заявок'
+                : 'По выбранному фильтру заявок нет'}
+            </p>
+            {applications.length === 0 && role === 'PARTICIPANT' && (
               <Button variant="primary" onClick={goToApplication}>
                 Подать первую заявку
               </Button>
@@ -154,24 +210,49 @@ export const ProfilePage = () => {
           </div>
         ) : (
           <div className={css.applicationsList}>
-            {applications.map(app => (
+            {visibleApplications.map(app => (
               <div key={app.appId} className={css.applicationCard}>
                 <div className={css.applicationHeader}>
                   <span className={css.applicationContest}>{app.contestName}</span>
+                  <span className={`${css.applicationStatus} ${getStatusClass(app.status)}`}>
+                    {getStatusText(app.status)}
+                  </span>
                 </div>
                 <div className={css.applicationDetails}>
                   <div><strong>Работа:</strong> {app.name}</div>
                   <div><strong>Описание:</strong> {app.description}</div>
                   <div><strong>Файлов:</strong> {app.worksCount}</div>
+                  {app.linksToWorks && app.linksToWorks.length > 0 && (
+                    <div className={css.applicationFiles}>
+                      <strong>Файлы:</strong>{' '}
+                      {app.linksToWorks.map((link, index) => (
+                        <a
+                          key={link}
+                          href={getWorkLink(link)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          Скачать {app.linksToWorks!.length > 1 ? `№${index + 1}` : ''}
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                  {app.rejectionReason && (
+                    <div className={css.rejectionReason}>
+                      <strong>Причина отказа:</strong> {app.rejectionReason}
+                    </div>
+                  )}
                 </div>
-                <div className={css.applicationActions}>
-                  <button
-                    className={css.deleteBtn}
-                    onClick={() => handleDeleteApplication(app.appId)}
-                  >
-                    Удалить
-                  </button>
-                </div>
+                {(app.status === 'PENDING' || !app.status) && (
+                  <div className={css.applicationActions}>
+                    <button
+                      className={css.deleteBtn}
+                      onClick={() => handleDeleteApplication(app.appId)}
+                    >
+                      Удалить
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>

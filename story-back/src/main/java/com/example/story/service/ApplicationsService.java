@@ -40,27 +40,27 @@ public class ApplicationsService {
 
         List<ResponseApplicationDto> result  = new ArrayList<>();
         for (ApplicationEntity application : applications) {
-            ResponseApplicationDto dto = applicationMapper.entityToApplicationDto(application);
-            dto.setWorksCount(workRepository.countByApplicationId(application.getId()));
-            dto.setContestName(application.getContestEntity().getName());
-
-            List<ResponseApplicationMemberDto> memberDtoList = new ArrayList<>();
-            for (MemberEntity member : application.getMemberEntities()) {
-                memberDtoList.add(memberMapper.entityToApplicationMemberDto(member));
-            }
-            dto.setMembers(memberDtoList);
-
-            result.add(dto);
+            result.add(buildResponseDto(application));
         }
         return result;
     }
 
     public ResponseApplicationDto obtain(Long appId) {
         ApplicationEntity application = getApplicationAndCheckAccess(appId);
+        return buildResponseDto(application);
+    }
 
+    private ResponseApplicationDto buildResponseDto(ApplicationEntity application) {
         ResponseApplicationDto dto = applicationMapper.entityToApplicationDto(application);
         dto.setWorksCount(workRepository.countByApplicationId(application.getId()));
         dto.setContestName(application.getContestEntity().getName());
+        dto.setContestId(application.getContestEntity().getId());
+
+        List<String> links = new ArrayList<>();
+        for (WorkEntity work : application.getWorkEntities()) {
+            links.add("/works/" + work.getId() + "/file");
+        }
+        dto.setLinksToWorks(links);
 
         List<ResponseApplicationMemberDto> memberDtoList = new ArrayList<>();
         for (MemberEntity member : application.getMemberEntities()) {

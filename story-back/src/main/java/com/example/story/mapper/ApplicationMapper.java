@@ -20,6 +20,8 @@ public interface ApplicationMapper {
 
     @Mapping(target = "worksCount", ignore = true)
     @Mapping(target = "contestName", ignore = true)
+    @Mapping(target = "contestId", ignore = true)
+    @Mapping(target = "linksToWorks", ignore = true)
     @Mapping(target = "mentorName", source = "mentor")
     @Mapping(target = "members", ignore = true)
     @Mapping(target = "appId", source = "id")

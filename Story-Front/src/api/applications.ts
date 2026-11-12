@@ -3,9 +3,19 @@ import { apiClient } from './client';
 export interface Application {
   appId: number;
   contestName: string;
+  contestId: number;
   name: string;
   description: string;
+  city?: string;
+  organization?: string;
+  mentorName?: string;
   worksCount: number;
+  isTeam?: boolean;
+  isCurator?: boolean;
+  status?: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+  rejectionReason?: string | null;
+  linksToWorks?: string[];
+  members?: unknown[];
 }
 
 export interface ApplicationsResponse {
