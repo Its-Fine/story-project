@@ -4,6 +4,7 @@ import { DecorLines } from '../../components/Layout/DecorLines';
 import { Notification } from '../../components/UI/Notification';
 import { applicationsApi } from '../../api/applications';
 import { storageApi } from '../../api/storage';
+import { useLanguage } from '../../contexts/LanguageContext';
 import css from './index.module.scss';
 
 interface Nomination {
@@ -14,6 +15,7 @@ interface Nomination {
 export const ApplicationPage = () => {
   const { contestId } = useParams<{ contestId: string }>();
   const navigate = useNavigate();
+  const { t, language } = useLanguage();
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -103,10 +105,10 @@ export const ApplicationPage = () => {
   };
 
   const validateAge = (birthDate: string): { isValid: boolean; message: string } => {
-    if (!birthDate) return { isValid: false, message: 'Введите дату рождения' };
+    if (!birthDate) return { isValid: false, message: t('Введите дату рождения') };
     const age = calculateAge(birthDate);
-    if (age < 10) return { isValid: false, message: 'Возраст должен быть от 10 лет' };
-    if (age > 35) return { isValid: false, message: 'Возраст должен быть до 35 лет' };
+    if (age < 10) return { isValid: false, message: t('Возраст должен быть от 10 лет') };
+    if (age > 35) return { isValid: false, message: t('Возраст должен быть до 35 лет') };
     return { isValid: true, message: '' };
   };
 
@@ -120,7 +122,7 @@ export const ApplicationPage = () => {
     const value = e.target.value;
     setFormData(prev => ({ ...prev, email: value }));
     if (value && !validateEmail(value)) {
-      setErrors(prev => ({ ...prev, email: 'Введите корректный email' }));
+      setErrors(prev => ({ ...prev, email: t('Введите корректный email') }));
     } else {
       setErrors(prev => ({ ...prev, email: '' }));
     }
@@ -153,7 +155,7 @@ export const ApplicationPage = () => {
     const files = e.target.files;
     if (files) {
       if (uploadedFiles.length + files.length > 3) {
-        showNotification('Можно загрузить не более 3 файлов', 'error');
+        showNotification(t('Можно загрузить не более 3 файлов'), 'error');
         return;
       }
       const newFiles = Array.from(files).filter(file => file.size <= 10 * 1024 * 1024);
@@ -165,14 +167,14 @@ export const ApplicationPage = () => {
   const removeFile = (index: number) => {
     setUploadedFiles(prev => prev.filter((_, i) => i !== index));
     if (uploadedFiles.length <= 1) {
-      setErrors(prev => ({ ...prev, files: 'Загрузите файл работы' }));
+      setErrors(prev => ({ ...prev, files: t('Загрузите файл работы') }));
     }
   };
 
   const formatFileSize = (bytes: number): string => {
-    if (bytes < 1024) return bytes + ' Б';
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' КБ';
-    return (bytes / (1024 * 1024)).toFixed(1) + ' МБ';
+    if (bytes < 1024) return bytes + (language === 'en' ? ' B' : ' Б');
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + (language === 'en' ? ' KB' : ' КБ');
+    return (bytes / (1024 * 1024)).toFixed(1) + (language === 'en' ? ' MB' : ' МБ');
   };
 
   const validateForm = (): boolean => {
@@ -183,13 +185,13 @@ export const ApplicationPage = () => {
 
     required.forEach(field => {
       if (!formData[field as keyof typeof formData]) {
-        newErrors[field] = 'Заполните поле';
+        newErrors[field] = t('Заполните поле');
         isValid = false;
       }
     });
 
     if (formData.email && !validateEmail(formData.email)) {
-      newErrors.email = 'Введите корректный email';
+      newErrors.email = t('Введите корректный email');
       isValid = false;
     }
 
@@ -202,10 +204,10 @@ export const ApplicationPage = () => {
     }
 
     if (uploadedFiles.length === 0) {
-      newErrors.files = 'Загрузите файл работы';
+      newErrors.files = t('Загрузите файл работы');
       isValid = false;
     } else if (uploadedFiles.length > 3) {
-      newErrors.files = 'Можно загрузить не более 3 файлов';
+      newErrors.files = t('Можно загрузить не более 3 файлов');
       isValid = false;
     }
 
@@ -234,7 +236,7 @@ export const ApplicationPage = () => {
       }
       return true;
     } catch (error) {
-      showNotification(error instanceof Error ? error.message : 'Не удалось загрузить файл', 'error');
+      showNotification(error instanceof Error ? error.message : t('Не удалось загрузить файл'), 'error');
       return false;
     } finally {
       setIsUploading(false);
@@ -274,19 +276,19 @@ export const ApplicationPage = () => {
 
     const appId = response.data?.appId;
     if (response.status !== 201 || !appId) {
-      showNotification(response.error?.message || 'Не удалось создать заявку', 'error');
+      showNotification(response.error?.message || t('Не удалось создать заявку'), 'error');
       return;
     }
 
-    showNotification('Заявка создана. Загружаем файлы...', 'success');
+    showNotification(t('Заявка создана. Загружаем файлы...'), 'success');
     const filesUploaded = await uploadFiles(appId);
     if (!filesUploaded) {
       await applicationsApi.deleteApplication(appId, token);
-      showNotification('Файл не загружен, черновик заявки удалён. Проверьте формат и повторите.', 'error');
+      showNotification(t('Файл не загружен, черновик заявки удалён. Проверьте формат и повторите.'), 'error');
       return;
     }
 
-    showNotification('Заявка отправлена!', 'success');
+    showNotification(t('Заявка отправлена!'), 'success');
     setTimeout(() => navigate('/profile'), 1500);
   };
 
@@ -317,18 +319,18 @@ export const ApplicationPage = () => {
       <DecorLines />
       <div className={css.container}>
         <div className={css.hero}>
-          <h1 className={css.heroTitle}>Подача заявки</h1>
+          <h1 className={css.heroTitle}>{t('Подача заявки')}</h1>
         </div>
 
         <div className={css.formCard}>
           <form onSubmit={handleSubmit}>
             <div className={css.formSection}>
-              <h2 className={css.sectionTitle}>Личные данные</h2>
+              <h2 className={css.sectionTitle}>{t('Личные данные')}</h2>
 
               <div className={css.formRow}>
                 <div className={css.formGroup}>
                   <label className={css.label}>
-                    Имя <span className={css.required}>*</span>
+                    {t('Имя')} <span className={css.required}>*</span>
                   </label>
                   <input
                     type="text"
@@ -344,7 +346,7 @@ export const ApplicationPage = () => {
 
                 <div className={css.formGroup}>
                   <label className={css.label}>
-                    Фамилия <span className={css.required}>*</span>
+                    {t('Фамилия')} <span className={css.required}>*</span>
                   </label>
                   <input
                     type="text"
@@ -362,7 +364,7 @@ export const ApplicationPage = () => {
               <div className={css.formRow}>
                 <div className={css.formGroup}>
                   <label className={css.label}>
-                    Email <span className={css.required}>*</span>
+                    {t('Email')} <span className={css.required}>*</span>
                   </label>
                   <input
                     type="email"
@@ -378,7 +380,7 @@ export const ApplicationPage = () => {
 
                 <div className={css.formGroup}>
                   <label className={css.label}>
-                    Дата рождения <span className={css.required}>*</span>
+                    {t('Дата рождения')} <span className={css.required}>*</span>
                   </label>
                   <input
                     type="date"
@@ -394,7 +396,7 @@ export const ApplicationPage = () => {
 
               <div className={css.formGroup}>
                 <label className={css.label}>
-                  Населенный пункт <span className={css.required}>*</span>
+                  {t('Населенный пункт')} <span className={css.required}>*</span>
                 </label>
                 <input
                   type="text"
@@ -409,7 +411,7 @@ export const ApplicationPage = () => {
               </div>
 
               <div className={css.formGroup}>
-                <label className={css.label}>Организация / Учебное учреждение</label>
+                <label className={css.label}>{t('Организация / Учебное учреждение')}</label>
                 <input
                   type="text"
                   id="organization"
@@ -422,11 +424,11 @@ export const ApplicationPage = () => {
             </div>
 
             <div className={css.formSection}>
-              <h2 className={css.sectionTitle}>Информация о работе</h2>
+              <h2 className={css.sectionTitle}>{t('Информация о работе')}</h2>
 
               <div className={css.formGroup}>
                 <label className={css.label}>
-                  Номинация <span className={css.required}>*</span>
+                  {t('Номинация')} <span className={css.required}>*</span>
                 </label>
                 <select
                   id="nomination"
@@ -438,8 +440,8 @@ export const ApplicationPage = () => {
                 >
                   <option value="">
                     {availableNominations.length === 0
-                      ? 'Сначала укажите дату рождения'
-                      : 'Выберите номинацию'}
+                      ? t('Сначала укажите дату рождения')
+                      : t('Выберите номинацию')}
                   </option>
                   {availableNominations.map(nom => (
                     <option key={nom.id} value={nom.id}>{nom.name}</option>
@@ -450,7 +452,7 @@ export const ApplicationPage = () => {
 
               <div className={css.formGroup}>
                 <label className={css.label}>
-                  Название работы <span className={css.required}>*</span>
+                  {t('Название работы')} <span className={css.required}>*</span>
                 </label>
                 <input
                   type="text"
@@ -466,7 +468,7 @@ export const ApplicationPage = () => {
 
               <div className={css.formGroup}>
                 <label className={css.label}>
-                  Описание работы <span className={css.required}>*</span>
+                  {t('Описание работы')} <span className={css.required}>*</span>
                 </label>
                 <textarea
                   id="description"
@@ -475,13 +477,13 @@ export const ApplicationPage = () => {
                   onBlur={() => validateForm()}
                   className={`${css.formControl} ${css.textarea} ${errors.description ? css.error : ''}`}
                   maxLength={500}
-                  placeholder="Материалы, техника исполнения..."
+                  placeholder={t('Материалы, техника исполнения...')}
                 />
                 {errors.description && <div className={css.errorMessage}>{errors.description}</div>}
               </div>
 
               <div className={css.formGroup}>
-                <label className={css.label}>ФИО наставника</label>
+                <label className={css.label}>{t('ФИО наставника')}</label>
                 <input
                   type="text"
                   id="mentorName"
@@ -494,7 +496,7 @@ export const ApplicationPage = () => {
             </div>
 
             <div className={css.formSection}>
-              <h2 className={css.sectionTitle}>Загрузка работ</h2>
+              <h2 className={css.sectionTitle}>{t('Загрузка работ')}</h2>
 
               {uploadedFiles.length > 0 && (
                 <div className={css.fileList}>
@@ -532,18 +534,18 @@ export const ApplicationPage = () => {
                   disabled={isUploading}
                 />
                 <div className={css.fileUploadIcon}>📁</div>
-                <div className={css.fileUploadText}>Нажмите для выбора файлов</div>
-                <div className={css.fileUploadHint}>PNG, JPG, TIFF до 10 МБ</div>
+                <div className={css.fileUploadText}>{t('Нажмите для выбора файлов')}</div>
+                <div className={css.fileUploadHint}>{t('PNG, JPG, TIFF до 10 МБ')}</div>
               </div>
               {errors.files && <div className={css.errorMessage}>{errors.files}</div>}
             </div>
 
             <div className={css.formActions}>
               <button type="button" className={`${css.btn} ${css.btnSecondary}`} onClick={handleClear} disabled={isUploading}>
-                Очистить
+                {t('Очистить')}
               </button>
               <button type="submit" className={`${css.btn} ${css.btnPrimary}`} disabled={isUploading}>
-                {isUploading ? 'Загрузка...' : 'Отправить заявку'}
+                {isUploading ? t('Загрузка...') : t('Отправить заявку')}
               </button>
             </div>
           </form>
