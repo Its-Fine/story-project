@@ -19,16 +19,16 @@ const saveBlob = (blob: Blob, fileName: string) => {
   URL.revokeObjectURL(url);
 };
 
-const formatDate = (value?: string) => {
+const formatDate = (value?: string, locale = 'ru-RU') => {
   if (!value) return '—';
   const date = new Date(value.replace(' ', 'T'));
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString('ru-RU');
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString(locale);
 };
 
-const formatSize = (bytes: number) => {
-  if (bytes < 1024) return `${bytes} Б`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} КБ`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} МБ`;
+const formatSize = (bytes: number, language: 'ru' | 'en' = 'ru') => {
+  if (bytes < 1024) return `${bytes} ${language === 'en' ? 'B' : 'Б'}`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} ${language === 'en' ? 'KB' : 'КБ'}`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} ${language === 'en' ? 'MB' : 'МБ'}`;
 };
 
 export const AdminPage = () => {
@@ -50,7 +50,7 @@ export const AdminPage = () => {
   const loadDashboard = useCallback(async () => {
     const token = getToken();
     if (!token) {
-      setError(t('Сессия администратора отсутствует. Войдите снова.'));
+      setError(t(t('Сессия администратора отсутствует. Войдите снова.')));
       setLoading(false);
       return;
     }
@@ -75,11 +75,11 @@ export const AdminPage = () => {
       setUsers(usersResult.data ?? []);
       setApplications(applicationsResult.data ?? []);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Ошибка загрузки панели администратора');
+      setError(loadError instanceof Error ? loadError.message : t('Ошибка загрузки панели администратора'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void loadDashboard();
@@ -95,7 +95,7 @@ export const AdminPage = () => {
       if (result.error || result.status >= 400) throw new Error(result.error?.message || t('Не удалось загрузить пользователей'));
       setUsers(result.data ?? []);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Ошибка загрузки пользователей');
+      setError(loadError instanceof Error ? loadError.message : t('Ошибка загрузки пользователей'));
     } finally {
       setBusy(false);
     }
@@ -111,9 +111,9 @@ export const AdminPage = () => {
       const result = await adminApi.setEventStatus(!eventClosed, token);
       if (result.error || result.status >= 400) throw new Error(result.error?.message || t('Не удалось изменить статус конкурса'));
       setEventClosed(Boolean(result.data?.close));
-      setNotice(result.data?.close ? t('Приём заявок закрыт.') : t('Приём заявок открыт.'));
+      setNotice(result.data?.close ? t(t('Приём заявок закрыт.')) : t(t('Приём заявок открыт.')));
     } catch (actionError) {
-      setError(actionError instanceof Error ? actionError.message : 'Ошибка изменения статуса');
+      setError(actionError instanceof Error ? actionError.message : t('Ошибка изменения статуса'));
     } finally {
       setBusy(false);
     }
@@ -136,7 +136,7 @@ export const AdminPage = () => {
       if (result.error || result.status >= 400) throw new Error(result.error?.message || t('Не удалось загрузить файлы'));
       setWorksByApplication(previous => ({ ...previous, [applicationId]: result.data ?? [] }));
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Ошибка загрузки файлов');
+      setError(loadError instanceof Error ? loadError.message : t('Ошибка загрузки файлов'));
     } finally {
       setBusy(false);
     }
@@ -188,7 +188,7 @@ export const AdminPage = () => {
         {error && <div className={css.error} role="alert">{error}</div>}
         {notice && <div className={css.notice} role="status">{notice}</div>}
 
-        <section className={css.stats} aria-label="Сводка">
+        <section className={css.stats} aria-label={t('Сводка')}>
           <article className={css.statCard}>
             <span className={css.statLabel}>{t('Пользователи')}</span>
             <strong className={css.statValue}>{loading ? '…' : userCount}</strong>
@@ -200,7 +200,7 @@ export const AdminPage = () => {
           <article className={css.statCard}>
             <span className={css.statLabel}>{t('Приём заявок')}</span>
             <strong className={`${css.eventState} ${eventClosed ? css.closed : css.open}`}>
-              {loading ? '…' : eventClosed ? 'Закрыт' : 'Открыт'}
+              {loading ? '…' : eventClosed ? t('Закрыт') : t('Открыт')}
             </strong>
             <button className={css.textButton} onClick={toggleEvent} disabled={loading || busy}>
               {eventClosed ? t('Открыть приём') : t('Закрыть приём')}
@@ -208,7 +208,7 @@ export const AdminPage = () => {
           </article>
         </section>
 
-        <nav className={css.tabs} aria-label="Разделы панели">
+        <nav className={css.tabs} aria-label={t('Разделы панели')}>
           <button className={activeTab === 'overview' ? css.activeTab : ''} onClick={() => setActiveTab('overview')}>{t('Обзор')}</button>
           <button className={activeTab === 'applications' ? css.activeTab : ''} onClick={() => setActiveTab('applications')}>{t('Заявки')}</button>
           <button className={activeTab === 'users' ? css.activeTab : ''} onClick={() => setActiveTab('users')}>{t('Участники')}</button>
@@ -221,8 +221,8 @@ export const AdminPage = () => {
               <div><h2>{t('Последние заявки')}</h2><p>{t('Первая страница списка — до 100 заявок.')}</p></div>
               <button className={css.textButton} onClick={() => setActiveTab('applications')}>{t('Все заявки →')}</button>
             </div>
-            {loading ? <p className={css.empty}>Загрузка…</p> : applications.length === 0 ? (
-              <p className={css.empty}>Пока нет заявок.</p>
+            {loading ? <p className={css.empty}>{t('Загрузка…')}</p> : applications.length === 0 ? (
+              <p className={css.empty}>{t('Пока нет заявок.')}</p>
             ) : (
               <div className={css.recentList}>
                 {applications.slice(0, 5).map(application => (
@@ -230,14 +230,14 @@ export const AdminPage = () => {
                     <div className={css.recentIcon}>З</div>
                     <div className={css.recentText}>
                       <strong>{application.name}</strong>
-                      <span>{application.contestName} · {formatDate(application.createdAt)}</span>
+                      <span>{application.contestName} · {formatDate(application.createdAt, language === 'en' ? 'en-US' : 'ru-RU')}</span>
                     </div>
-                    <span className={css.fileCount}>{application.worksCount} файлов</span>
+                    <span className={css.fileCount}>{application.worksCount} {t('файлов')}</span>
                   </article>
                 ))}
               </div>
             )}
-            <p className={css.capabilityNote}>Доступны просмотр заявок и работ, выгрузка Excel и управление приёмом. Оценки и смены статуса заявок в backend пока нет.</p>
+            <p className={css.capabilityNote}>{t('Доступны просмотр заявок и работ, выгрузка Excel и управление приёмом. Оценки и смены статуса заявок в backend пока нет.')}</p>
           </section>
         )}
 
@@ -248,7 +248,7 @@ export const AdminPage = () => {
               <span className={css.resultCount}>{applications.length} {t('из')} {applicationCount}</span>
             </div>
             {loading ? <p className={css.empty}>Загрузка…</p> : applications.length === 0 ? (
-              <p className={css.empty}>Заявок пока нет.</p>
+              <p className={css.empty}>{t('Заявок пока нет.')}</p>
             ) : (
               <div className={css.applicationList}>
                 {applications.map(application => (
@@ -260,10 +260,10 @@ export const AdminPage = () => {
                       </button>
                     </div>
                     <div className={css.applicationMeta}>
-                      <span>Город: {application.city || '—'}</span>
-                      <span>Формат: {application.isTeam ? 'Команда' : 'Индивидуально'}</span>
-                      {application.organization && <span>Организация: {application.organization}</span>}
-                      {application.mentorName && <span>Наставник: {application.mentorName}</span>}
+                      <span>{t('Город:')} {application.city || '—'}</span>
+                      <span>{t('Формат:')} {application.isTeam ? t('Команда') : t('Индивидуально')}</span>
+                      {application.organization && <span>{t('Организация:')} {application.organization}</span>}
+                      {application.mentorName && <span>{t('Наставник:')} {application.mentorName}</span>}
                     </div>
                     <p className={css.description}>{application.description}</p>
                     {expandedApplicationId === application.appId && (
@@ -272,7 +272,7 @@ export const AdminPage = () => {
                           <span className={css.muted}>{busy ? t('Загрузка файлов…') : t('В этой заявке нет файлов.')}</span>
                         ) : (worksByApplication[application.appId] ?? []).map(work => (
                           <div className={css.workItem} key={work.workId}>
-                            <div><strong>{work.name}</strong><span>{formatSize(work.fileSize)} · {work.broken ? 'Файл повреждён' : 'Доступен'}</span></div>
+                            <div><strong>{work.name}</strong><span>{formatSize(work.fileSize, language)} · {work.broken ? 'Файл повреждён' : 'Доступен'}</span></div>
                             <button className={css.textButton} onClick={() => downloadFile(work)} disabled={busy || work.broken}>{t('Скачать')}</button>
                           </div>
                         ))}
@@ -297,7 +297,7 @@ export const AdminPage = () => {
               {search && <button className={css.textButton} type="button" onClick={() => { setSearch(''); void loadUsers(); }}>{t('Сбросить')}</button>}
             </form>
             {loading ? <p className={css.empty}>Загрузка…</p> : users.length === 0 ? (
-              <p className={css.empty}>Пользователи не найдены.</p>
+              <p className={css.empty}>{t('Пользователи не найдены.')}</p>
             ) : (
               <div className={css.userList}>
                 {users.map(user => (
