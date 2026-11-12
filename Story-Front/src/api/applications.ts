@@ -15,7 +15,20 @@ export interface Application {
   status?: 'PENDING' | 'ACCEPTED' | 'REJECTED';
   rejectionReason?: string | null;
   linksToWorks?: string[];
-  members?: unknown[];
+  members?: ApplicationMember[];
+}
+
+export interface ApplicationMember {
+  memberId?: number;
+  firstName: string;
+  lastName: string;
+  birthDate: string;
+}
+
+export interface ApplicationMemberUpdate {
+  firstName: string;
+  lastName: string;
+  birthDate: string;
 }
 
 export interface ApplicationsResponse {
@@ -60,9 +73,12 @@ export interface RateApplicationRequest {
 }
 
 export interface UpdateApplicationRequest {
-  name?: string;
-  annotation?: string;
-  link_to_work?: string;
+  name: string;
+  description: string;
+  city: string;
+  organization?: string;
+  mentorName?: string;
+  members?: ApplicationMemberUpdate[];
 }
 
 export interface UpdateApplicationResponse {
@@ -157,15 +173,12 @@ export const applicationsApi = {
       },
     }),
 
-  updateApplication: (data: UpdateApplicationRequest, contestId: string, token: string) =>
-    apiClient<UpdateApplicationResponse>({
-      api: '/applications/update',
-      method: 'PATCH',
+  updateApplication: (appId: number, data: UpdateApplicationRequest, token: string) =>
+    apiClient<void>({
+      api: `/applications/${appId}`,
+      method: 'PUT',
       values: data,
       token,
-      customHeaders: {
-        'X-Contest-Id': contestId,
-      },
     }),
 
   getUserApplications: (token: string) =>

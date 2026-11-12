@@ -6,21 +6,20 @@ interface LogoProps {
 }
 
 export const Logo = ({ size = 'medium' }: LogoProps) => {
-  const logoSizes = {
-    small: 60,
-    medium: 120,
-    large: 180
+  const dimensions = {
+    small: { width: 60, height: 60 },
+    medium: { width: 120, height: 120 },
+    large: { width: 410, height: 190 },
   };
-
-  const dimension = logoSizes[size];
+  const dimension = dimensions[size];
 
   return (
     <div className={css.logoContainer}>
       <img
         src="/logo.png"
         alt="Сказка#Дизайн"
-        width={dimension}
-        height={dimension}
+        width={dimension.width}
+        height={dimension.height}
         className={css.logo}
       />
     </div>

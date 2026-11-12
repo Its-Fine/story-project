@@ -3,6 +3,7 @@ import { DecorLines } from '../../components/Layout/DecorLines';
 import { Button } from '../../components/UI/Button';
 import { adminApi, AdminApplication, AdminUser, AdminWork } from '../../api/admin';
 import { getRoleLabel } from '../../utils/roleLabels';
+import { useLanguage } from '../../contexts/LanguageContext';
 import css from './index.module.scss';
 
 type AdminTab = 'overview' | 'applications' | 'users';
@@ -14,23 +15,27 @@ const saveBlob = (blob: Blob, fileName: string) => {
   const link = document.createElement('a');
   link.href = url;
   link.download = fileName;
+  document.body.appendChild(link);
   link.click();
-  URL.revokeObjectURL(url);
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 };
 
-const formatDate = (value?: string) => {
+const formatDate = (value: string | undefined, locale: string) => {
   if (!value) return '—';
   const date = new Date(value.replace(' ', 'T'));
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString('ru-RU');
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString(locale);
 };
 
-const formatSize = (bytes: number) => {
-  if (bytes < 1024) return `${bytes} Б`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} КБ`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} МБ`;
+const formatSize = (bytes: number, language: 'ru' | 'en') => {
+  if (bytes < 1024) return `${bytes} ${language === 'en' ? 'B' : 'Б'}`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} ${language === 'en' ? 'KB' : 'КБ'}`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} ${language === 'en' ? 'MB' : 'МБ'}`;
 };
 
 export const AdminPage = () => {
+  const { t, language } = useLanguage();
+  const locale = language === 'en' ? 'en-US' : 'ru-RU';
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [applications, setApplications] = useState<AdminApplication[]>([]);
@@ -48,7 +53,7 @@ export const AdminPage = () => {
   const loadDashboard = useCallback(async () => {
     const token = getToken();
     if (!token) {
-      setError('Сессия администратора отсутствует. Войдите снова.');
+      setError(t('Сессия администратора отсутствует. Войдите снова.'));
       setLoading(false);
       return;
     }
@@ -64,7 +69,9 @@ export const AdminPage = () => {
         adminApi.getApplications(token),
       ]);
       const failed = results.find(result => result.error || result.status >= 400);
-      if (failed) throw new Error(failed.error?.message || 'Не удалось загрузить данные панели');
+      if (failed) {
+        throw new Error(failed.error?.message || t('Не удалось загрузить данные панели'));
+      }
 
       const [usersTotal, applicationsTotal, event, usersResult, applicationsResult] = results;
       setUserCount(usersTotal.data ?? 0);
@@ -73,11 +80,11 @@ export const AdminPage = () => {
       setUsers(usersResult.data ?? []);
       setApplications(applicationsResult.data ?? []);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Ошибка загрузки панели администратора');
+      setError(loadError instanceof Error ? loadError.message : t('Ошибка загрузки панели администратора'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void loadDashboard();
@@ -90,10 +97,12 @@ export const AdminPage = () => {
     setError('');
     try {
       const result = await adminApi.getUsers(token, email.trim() || undefined);
-      if (result.error || result.status >= 400) throw new Error(result.error?.message || 'Не удалось загрузить пользователей');
+      if (result.error || result.status >= 400) {
+        throw new Error(result.error?.message || t('Не удалось загрузить пользователей'));
+      }
       setUsers(result.data ?? []);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Ошибка загрузки пользователей');
+      setError(loadError instanceof Error ? loadError.message : t('Ошибка загрузки пользователей'));
     } finally {
       setBusy(false);
     }
@@ -107,11 +116,13 @@ export const AdminPage = () => {
     setNotice('');
     try {
       const result = await adminApi.setEventStatus(!eventClosed, token);
-      if (result.error || result.status >= 400) throw new Error(result.error?.message || 'Не удалось изменить статус конкурса');
+      if (result.error || result.status >= 400) {
+        throw new Error(result.error?.message || t('Не удалось изменить статус конкурса'));
+      }
       setEventClosed(Boolean(result.data?.close));
-      setNotice(result.data?.close ? 'Приём заявок закрыт.' : 'Приём заявок открыт.');
+      setNotice(result.data?.close ? t('Приём заявок закрыт.') : t('Приём заявок открыт.'));
     } catch (actionError) {
-      setError(actionError instanceof Error ? actionError.message : 'Ошибка изменения статуса');
+      setError(actionError instanceof Error ? actionError.message : t('Ошибка изменения статуса'));
     } finally {
       setBusy(false);
     }
@@ -131,10 +142,12 @@ export const AdminPage = () => {
     setError('');
     try {
       const result = await adminApi.getWorks(applicationId, token);
-      if (result.error || result.status >= 400) throw new Error(result.error?.message || 'Не удалось загрузить файлы');
+      if (result.error || result.status >= 400) {
+        throw new Error(result.error?.message || t('Не удалось загрузить файлы'));
+      }
       setWorksByApplication(previous => ({ ...previous, [applicationId]: result.data ?? [] }));
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Ошибка загрузки файлов');
+      setError(loadError instanceof Error ? loadError.message : t('Ошибка загрузки файлов'));
     } finally {
       setBusy(false);
     }
@@ -146,9 +159,10 @@ export const AdminPage = () => {
     setBusy(true);
     setError('');
     try {
-      saveBlob(await adminApi.downloadWork(work.workId, token), work.name || `work-${work.workId}`);
+      const blob = await adminApi.downloadWork(work.workId, token);
+      saveBlob(blob, work.name || `work-${work.workId}`);
     } catch (downloadError) {
-      setError(downloadError instanceof Error ? downloadError.message : 'Ошибка скачивания файла');
+      setError(downloadError instanceof Error ? downloadError.message : t('Ошибка скачивания файла'));
     } finally {
       setBusy(false);
     }
@@ -161,10 +175,11 @@ export const AdminPage = () => {
     setError('');
     setNotice('');
     try {
-      saveBlob(await adminApi.downloadApplicationsReport(token), 'applications_report.xlsx');
-      setNotice('Excel-отчёт скачан.');
+      const blob = await adminApi.downloadApplicationsReport(token);
+      saveBlob(blob, 'applications_report.xlsx');
+      setNotice(t('Excel-отчёт скачан.'));
     } catch (downloadError) {
-      setError(downloadError instanceof Error ? downloadError.message : 'Ошибка скачивания отчёта');
+      setError(downloadError instanceof Error ? downloadError.message : t('Ошибка скачивания отчёта'));
     } finally {
       setBusy(false);
     }
@@ -176,51 +191,51 @@ export const AdminPage = () => {
       <main className={css.page}>
         <section className={css.hero}>
           <div>
-            <span className={css.eyebrow}>УПРАВЛЕНИЕ КОНКУРСОМ</span>
-            <h1 className={css.title}>Панель администратора</h1>
-            <p className={css.subtitle}>Участники, заявки, работы и настройки приёма.</p>
+            <span className={css.eyebrow}>{t('УПРАВЛЕНИЕ КОНКУРСОМ')}</span>
+            <h1 className={css.title}>{t('Панель администратора')}</h1>
+            <p className={css.subtitle}>{t('Участники, заявки, работы и настройки приёма.')}</p>
           </div>
-          <Button variant="secondary" onClick={downloadReport} disabled={busy}>Скачать Excel-отчёт</Button>
+          <Button variant="secondary" onClick={downloadReport} disabled={busy}>{t('Скачать Excel-отчёт')}</Button>
         </section>
 
         {error && <div className={css.error} role="alert">{error}</div>}
         {notice && <div className={css.notice} role="status">{notice}</div>}
 
-        <section className={css.stats} aria-label="Сводка">
+        <section className={css.stats} aria-label={t('Сводка')}>
           <article className={css.statCard}>
-            <span className={css.statLabel}>Пользователи</span>
+            <span className={css.statLabel}>{t('Пользователи')}</span>
             <strong className={css.statValue}>{loading ? '…' : userCount}</strong>
           </article>
           <article className={css.statCard}>
-            <span className={css.statLabel}>Заявки</span>
+            <span className={css.statLabel}>{t('Заявки')}</span>
             <strong className={css.statValue}>{loading ? '…' : applicationCount}</strong>
           </article>
           <article className={css.statCard}>
-            <span className={css.statLabel}>Приём заявок</span>
+            <span className={css.statLabel}>{t('Приём заявок')}</span>
             <strong className={`${css.eventState} ${eventClosed ? css.closed : css.open}`}>
-              {loading ? '…' : eventClosed ? 'Закрыт' : 'Открыт'}
+              {loading ? '…' : eventClosed ? t('Закрыт') : t('Открыт')}
             </strong>
             <button className={css.textButton} onClick={toggleEvent} disabled={loading || busy}>
-              {eventClosed ? 'Открыть приём' : 'Закрыть приём'}
+              {eventClosed ? t('Открыть приём') : t('Закрыть приём')}
             </button>
           </article>
         </section>
 
-        <nav className={css.tabs} aria-label="Разделы панели">
-          <button className={activeTab === 'overview' ? css.activeTab : ''} onClick={() => setActiveTab('overview')}>Обзор</button>
-          <button className={activeTab === 'applications' ? css.activeTab : ''} onClick={() => setActiveTab('applications')}>Заявки</button>
-          <button className={activeTab === 'users' ? css.activeTab : ''} onClick={() => setActiveTab('users')}>Участники</button>
-          <button className={css.refreshButton} onClick={loadDashboard} disabled={loading || busy}>Обновить</button>
+        <nav className={css.tabs} aria-label={t('Разделы панели')}>
+          <button className={activeTab === 'overview' ? css.activeTab : ''} onClick={() => setActiveTab('overview')}>{t('Обзор')}</button>
+          <button className={activeTab === 'applications' ? css.activeTab : ''} onClick={() => setActiveTab('applications')}>{t('Заявки')}</button>
+          <button className={activeTab === 'users' ? css.activeTab : ''} onClick={() => setActiveTab('users')}>{t('Участники')}</button>
+          <button className={css.refreshButton} onClick={() => void loadDashboard()} disabled={loading || busy}>{t('Обновить')}</button>
         </nav>
 
         {activeTab === 'overview' && (
           <section className={css.panel}>
             <div className={css.panelHeading}>
-              <div><h2>Последние заявки</h2><p>Первая страница списка — до 100 заявок.</p></div>
-              <button className={css.textButton} onClick={() => setActiveTab('applications')}>Все заявки →</button>
+              <div><h2>{t('Последние заявки')}</h2><p>{t('Первая страница списка — до 100 заявок.')}</p></div>
+              <button className={css.textButton} onClick={() => setActiveTab('applications')}>{t('Все заявки →')}</button>
             </div>
-            {loading ? <p className={css.empty}>Загрузка…</p> : applications.length === 0 ? (
-              <p className={css.empty}>Пока нет заявок.</p>
+            {loading ? <p className={css.empty}>{t('Загрузка…')}</p> : applications.length === 0 ? (
+              <p className={css.empty}>{t('Пока нет заявок.')}</p>
             ) : (
               <div className={css.recentList}>
                 {applications.slice(0, 5).map(application => (
@@ -228,50 +243,56 @@ export const AdminPage = () => {
                     <div className={css.recentIcon}>З</div>
                     <div className={css.recentText}>
                       <strong>{application.name}</strong>
-                      <span>{application.contestName} · {formatDate(application.createdAt)}</span>
+                      <span>{application.contestName} · {formatDate(application.createdAt, locale)}</span>
                     </div>
-                    <span className={css.fileCount}>{application.worksCount} файлов</span>
+                    <span className={css.fileCount}>{application.worksCount} {t('файлов')}</span>
                   </article>
                 ))}
               </div>
             )}
-            <p className={css.capabilityNote}>Доступны просмотр заявок и работ, выгрузка Excel и управление приёмом. Оценки и смены статуса заявок в backend пока нет.</p>
+            <p className={css.capabilityNote}>{t('Доступны просмотр заявок и работ, выгрузка Excel и управление приёмом. Оценки и смены статуса заявок в backend пока нет.')}</p>
           </section>
         )}
 
         {activeTab === 'applications' && (
           <section className={css.panel}>
             <div className={css.panelHeading}>
-              <div><h2>Заявки участников</h2><p>Для заявки можно посмотреть работы и скачать файлы.</p></div>
-              <span className={css.resultCount}>{applications.length} из {applicationCount}</span>
+              <div><h2>{t('Заявки участников')}</h2><p>{t('Для заявки можно посмотреть работы и скачать файлы.')}</p></div>
+              <span className={css.resultCount}>{applications.length} {t('из')} {applicationCount}</span>
             </div>
-            {loading ? <p className={css.empty}>Загрузка…</p> : applications.length === 0 ? (
-              <p className={css.empty}>Заявок пока нет.</p>
+            {loading ? <p className={css.empty}>{t('Загрузка…')}</p> : applications.length === 0 ? (
+              <p className={css.empty}>{t('Заявок пока нет.')}</p>
             ) : (
               <div className={css.applicationList}>
                 {applications.map(application => (
                   <article className={css.applicationCard} key={application.appId}>
                     <div className={css.applicationTop}>
-                      <div><h3>{application.name}</h3><span className={css.muted}>{application.contestName} · {formatDate(application.createdAt)}</span></div>
-                      <button className={css.outlineButton} onClick={() => toggleWorks(application.appId)} disabled={busy}>
-                        {expandedApplicationId === application.appId ? 'Скрыть работы' : `Работы (${application.worksCount})`}
+                      <div>
+                        <h3>{application.name}</h3>
+                        <span className={css.muted}>{application.contestName} · {formatDate(application.createdAt, locale)}</span>
+                      </div>
+                      <button className={css.outlineButton} onClick={() => void toggleWorks(application.appId)} disabled={busy}>
+                        {expandedApplicationId === application.appId ? t('Скрыть работы') : `${t('Работы')} (${application.worksCount})`}
                       </button>
                     </div>
                     <div className={css.applicationMeta}>
-                      <span>Город: {application.city || '—'}</span>
-                      <span>Формат: {application.isTeam ? 'Команда' : 'Индивидуально'}</span>
-                      {application.organization && <span>Организация: {application.organization}</span>}
-                      {application.mentorName && <span>Наставник: {application.mentorName}</span>}
+                      <span>{t('Город:')} {application.city || '—'}</span>
+                      <span>{t('Формат:')} {application.isTeam ? t('Команда') : t('Индивидуально')}</span>
+                      {application.organization && <span>{t('Организация:')} {application.organization}</span>}
+                      {application.mentorName && <span>{t('Наставник:')} {application.mentorName}</span>}
                     </div>
                     <p className={css.description}>{application.description}</p>
                     {expandedApplicationId === application.appId && (
                       <div className={css.worksList}>
                         {(worksByApplication[application.appId] ?? []).length === 0 ? (
-                          <span className={css.muted}>{busy ? 'Загрузка файлов…' : 'В этой заявке нет файлов.'}</span>
+                          <span className={css.muted}>{busy ? t('Загрузка файлов…') : t('В этой заявке нет файлов.')}</span>
                         ) : (worksByApplication[application.appId] ?? []).map(work => (
                           <div className={css.workItem} key={work.workId}>
-                            <div><strong>{work.name}</strong><span>{formatSize(work.fileSize)} · {work.broken ? 'Файл повреждён' : 'Доступен'}</span></div>
-                            <button className={css.textButton} onClick={() => downloadFile(work)} disabled={busy || work.broken}>Скачать</button>
+                            <div>
+                              <strong>{work.name}</strong>
+                              <span>{formatSize(work.fileSize, language)} · {work.broken ? t('Файл повреждён') : t('Доступен')}</span>
+                            </div>
+                            <button className={css.textButton} onClick={() => void downloadFile(work)} disabled={busy || work.broken}>{t('Скачать')}</button>
                           </div>
                         ))}
                       </div>
@@ -286,24 +307,27 @@ export const AdminPage = () => {
         {activeTab === 'users' && (
           <section className={css.panel}>
             <div className={css.panelHeading}>
-              <div><h2>Участники</h2><p>Поиск по email, роль и количество заявок.</p></div>
-              <span className={css.resultCount}>{users.length} показано · {userCount} всего</span>
+              <div><h2>{t('Участники')}</h2><p>{t('Поиск по email, роль и количество заявок.')}</p></div>
+              <span className={css.resultCount}>{users.length} {t('показано')} · {userCount} {t('всего')}</span>
             </div>
-            <form className={css.search} onSubmit={(event) => { event.preventDefault(); void loadUsers(search); }}>
-              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Поиск по email" aria-label="Поиск по email" />
-              <Button variant="primary" type="submit" disabled={busy}>Найти</Button>
-              {search && <button className={css.textButton} type="button" onClick={() => { setSearch(''); void loadUsers(); }}>Сбросить</button>}
+            <form className={css.search} onSubmit={event => { event.preventDefault(); void loadUsers(search); }}>
+              <input value={search} onChange={event => setSearch(event.target.value)} placeholder={t('Поиск по email')} aria-label={t('Поиск по email')} />
+              <Button variant="primary" type="submit" disabled={busy}>{t('Найти')}</Button>
+              {search && <button className={css.textButton} type="button" onClick={() => { setSearch(''); void loadUsers(); }}>{t('Сбросить')}</button>}
             </form>
-            {loading ? <p className={css.empty}>Загрузка…</p> : users.length === 0 ? (
-              <p className={css.empty}>Пользователи не найдены.</p>
+            {loading ? <p className={css.empty}>{t('Загрузка…')}</p> : users.length === 0 ? (
+              <p className={css.empty}>{t('Пользователи не найдены.')}</p>
             ) : (
               <div className={css.userList}>
                 {users.map(user => (
                   <article className={css.userRow} key={user.userId}>
                     <div className={css.avatar}>{`${user.firstName?.[0] ?? ''}${user.lastName?.[0] ?? ''}` || 'У'}</div>
-                    <div className={css.userIdentity}><strong>{user.firstName} {user.lastName}</strong><span>{user.email}</span></div>
-                    <span className={`${css.roleBadge} ${user.role === 'ADMIN' ? css.adminBadge : ''}`}>{getRoleLabel(user.role)}</span>
-                    <span className={css.userApplications}>{user.applicationsCount} заявок</span>
+                    <div className={css.userIdentity}>
+                      <strong>{user.firstName} {user.lastName}</strong>
+                      <span>{user.email}</span>
+                    </div>
+                    <span className={`${css.roleBadge} ${user.role === 'ADMIN' ? css.adminBadge : ''}`}>{t(getRoleLabel(user.role))}</span>
+                    <span className={css.userApplications}>{user.applicationsCount} {t('заявок')}</span>
                   </article>
                 ))}
               </div>

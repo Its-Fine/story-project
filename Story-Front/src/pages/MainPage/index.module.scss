@@ -1,24 +1,25 @@
 @import '../../styles/variables.scss';
 
 body:has(.mainPage) {
-  background: #4f4f4f !important;
+  background: #f6f6f6 !important;
 }
 
 .mainPage {
   min-height: 100vh;
-  width: 100%;
+  width: calc(100% - 88px);
   position: relative;
   z-index: 2;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: #f6f6f6;
 }
 
 .container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 20px;
   width: 100%;
+  max-width: 930px;
+  margin: 0 auto;
+  padding: 40px 28px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -29,129 +30,107 @@ body:has(.mainPage) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 40px;
-
-  @media (max-width: $breakpoint-mobile) {
-    flex-direction: column;
-  }
+  gap: 48px;
 }
 
 .hero {
-  flex: 1;
-  color: white;
-  padding-right: 40px;
-
-  @media (max-width: $breakpoint-mobile) {
-    text-align: center;
-    padding-right: 0;
-  }
-}
-
-.logoContainer {
-  margin-bottom: 30px;
-}
-
-.logo {
-  width: 180px;
-  height: 180px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 2px dashed rgba(255, 255, 255, 0.3);
-  border-radius: 50%;
+  flex: 1 1 0;
+  min-width: 0;
+  color: $secondary;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  margin-bottom: 20px;
-
-  @media (max-width: $breakpoint-mobile) {
-    margin-left: auto;
-    margin-right: auto;
-  }
-}
-
-.logoPlaceholder {
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 14px;
-  text-transform: uppercase;
-  letter-spacing: 2px;
-  text-align: center;
-}
-
-.title {
-  font-size: 56px;
-  font-weight: 700;
-  margin-bottom: 20px;
-  line-height: 1.2;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-
-  @media (max-width: $breakpoint-mobile) {
-    font-size: 40px;
-  }
-}
-
-.subtitle {
-  font-size: 24px;
-  font-weight: 300;
-  opacity: 0.95;
-  margin-bottom: 20px;
-  line-height: 1.4;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
-  max-width: 500px;
-
-  @media (max-width: $breakpoint-mobile) {
-    font-size: 20px;
-    margin-left: auto;
-    margin-right: auto;
-  }
 }
 
 .formContainer {
-  flex: 0 0 400px;
-  background: white;
-  border-radius: 20px;
-  padding: 40px;
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
-  border: 1px solid $primary;
-
-  @media (max-width: $breakpoint-mobile) {
-    flex: 0 0 auto;
-    width: 100%;
-    max-width: 400px;
-  }
+  flex: 0 0 416px;
+  min-width: 0;
+  padding: 28px 30px 30px;
+  background: #ffffff;
+  border: 1px solid rgba(214, 19, 36, 0.75);
+  border-radius: 18px;
+  box-shadow: 0 14px 32px rgba(35, 35, 45, 0.06);
 }
 
 .tabs {
   display: flex;
   gap: 10px;
-  margin-bottom: 30px;
-  border-bottom: 2px solid $border-light;
-  padding-bottom: 10px;
+  margin-bottom: 26px;
+  border-bottom: 1px solid #ededed;
+  padding-bottom: 0;
 }
 
 .tab {
+  position: relative;
   flex: 1;
   text-align: center;
-  padding: 10px;
-  font-size: 18px;
+  padding: 10px 8px 15px;
+  font-size: 14px;
   font-weight: 600;
   color: $secondary;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: color 0.2s ease;
   background: none;
   border: none;
 
   &.active {
     color: $primary;
-    position: relative;
 
     &::after {
       content: '';
       position: absolute;
-      bottom: -12px;
+      bottom: -1px;
       left: 0;
       right: 0;
       height: 3px;
       background: $primary;
       border-radius: 3px 3px 0 0;
     }
+  }
+}
+
+@media (max-width: 900px) {
+  .mainPage {
+    width: calc(100% - 64px);
+  }
+
+  .container {
+    padding: 32px 20px;
+  }
+
+  .content {
+    gap: 28px;
+  }
+
+  .formContainer {
+    flex-basis: 390px;
+  }
+}
+
+@media (max-width: 700px) {
+  .mainPage {
+    width: calc(100% - 64px);
+    min-height: 100vh;
+  }
+
+  .container {
+    padding: 76px 16px 28px;
+  }
+
+  .content {
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .hero {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .formContainer {
+    flex: 0 0 auto;
+    width: 100%;
+    max-width: 416px;
+    padding: 24px 20px;
   }
 }

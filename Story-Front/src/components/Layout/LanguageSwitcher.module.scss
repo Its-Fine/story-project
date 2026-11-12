@@ -1,0 +1,57 @@
+.rail {
+  position: fixed;
+  z-index: 20;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 88px;
+  background: #d61324;
+}
+
+.switcher {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: #ffffff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+
+  button {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #5e5e5e;
+    font: inherit;
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 1.5;
+    cursor: pointer;
+  }
+
+  .active {
+    color: #d61324;
+  }
+
+  span {
+    width: 1px;
+    height: 12px;
+    background: #dedede;
+  }
+}
+
+@media (max-width: 768px) {
+  .rail {
+    width: 64px;
+  }
+
+  .switcher {
+    top: 8px;
+    right: 5px;
+    gap: 4px;
+    padding: 3px 5px;
+  }
+}

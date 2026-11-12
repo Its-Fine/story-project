@@ -2,11 +2,15 @@
   display: flex;
   justify-content: flex-start;
   align-items: center;
-  margin-bottom: 20px;
+  width: 100%;
+  margin-bottom: 0;
   margin-left: 0;
   padding-left: 0;
 }
 
 .logo {
+  display: block;
+  max-width: 100%;
+  height: auto;
   object-fit: contain;
 }
