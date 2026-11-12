@@ -23,6 +23,11 @@ export const ProfilePage = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileDraft, setProfileDraft] = useState({ firstName: '', lastName: '' });
+  const [editingApplicationId, setEditingApplicationId] = useState<number | null>(null);
+  const [applicationDraft, setApplicationDraft] = useState({
+    name: '', description: '', city: '', organization: '', mentorName: '',
+  });
+  const [savingApplication, setSavingApplication] = useState(false);
 
   const fetchApplications = useCallback(async () => {
     const token = localStorage.getItem('token');
@@ -135,6 +140,75 @@ export const ProfilePage = () => {
   const handleLogout = () => {
     signOut();
     navigate('/', { replace: true });
+  };
+
+  const handleEditApplication = (application: Application) => {
+    setError('');
+    setApplicationDraft({
+      name: application.name ?? '',
+      description: application.description ?? '',
+      city: application.city ?? '',
+      organization: application.organization ?? '',
+      mentorName: application.mentorName ?? '',
+    });
+    setEditingApplicationId(application.appId);
+  };
+
+  const handleCancelApplicationEdit = () => {
+    setEditingApplicationId(null);
+    setApplicationDraft({ name: '', description: '', city: '', organization: '', mentorName: '' });
+    setError('');
+  };
+
+  const handleSaveApplication = async (event: React.FormEvent, application: Application) => {
+    event.preventDefault();
+    const token = localStorage.getItem('token');
+    if (!token || savingApplication) return;
+
+    const name = applicationDraft.name.trim();
+    const description = applicationDraft.description.trim();
+    const city = applicationDraft.city.trim();
+    if (!name || !description || !city) {
+      setError(t('Заполните название, описание и населённый пункт'));
+      return;
+    }
+
+    const members = application.isTeam
+      ? (application.members ?? []).map(member => ({
+          firstName: member.firstName,
+          lastName: member.lastName,
+          birthDate: member.birthDate,
+        }))
+      : [];
+
+    if (application.isTeam && members.length === 0) {
+      setError(t('Не удалось обновить заявку'));
+      return;
+    }
+
+    setSavingApplication(true);
+    setError('');
+    try {
+      const response = await applicationsApi.updateApplication(application.appId, {
+        name,
+        description,
+        city,
+        organization: applicationDraft.organization.trim(),
+        mentorName: applicationDraft.mentorName.trim(),
+        ...(application.isTeam ? { members } : {}),
+      }, token);
+
+      if (response.status !== 204 && response.status !== 200) {
+        throw new Error(response.error?.message || t('Не удалось обновить заявку'));
+      }
+
+      setEditingApplicationId(null);
+      await fetchApplications();
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : t('Не удалось обновить заявку'));
+    } finally {
+      setSavingApplication(false);
+    }
   };
 
   const handleDeleteApplication = async (id: number) => {
@@ -272,8 +346,45 @@ export const ProfilePage = () => {
                   )}
                   {application.rejectionReason && <div className={css.rejectionReason}><strong>{t('Причина отказа:')}</strong> {application.rejectionReason}</div>}
                 </div>
+                {editingApplicationId === application.appId && (
+                  <form className={css.applicationEditForm} onSubmit={event => void handleSaveApplication(event, application)}>
+                    <label>
+                      <span>{t('Название работы')}</span>
+                      <input value={applicationDraft.name} maxLength={200} onChange={event => setApplicationDraft(previous => ({ ...previous, name: event.target.value }))} required />
+                    </label>
+                    <label>
+                      <span>{t('Описание работы')}</span>
+                      <textarea value={applicationDraft.description} rows={3} onChange={event => setApplicationDraft(previous => ({ ...previous, description: event.target.value }))} required />
+                    </label>
+                    <div className={css.applicationEditRow}>
+                      <label>
+                        <span>{t('Населенный пункт')}</span>
+                        <input value={applicationDraft.city} maxLength={100} onChange={event => setApplicationDraft(previous => ({ ...previous, city: event.target.value }))} required />
+                      </label>
+                      <label>
+                        <span>{t('Организация')}</span>
+                        <input value={applicationDraft.organization} maxLength={200} onChange={event => setApplicationDraft(previous => ({ ...previous, organization: event.target.value }))} />
+                      </label>
+                      <label>
+                        <span>{t('ФИО наставника')}</span>
+                        <input value={applicationDraft.mentorName} maxLength={100} onChange={event => setApplicationDraft(previous => ({ ...previous, mentorName: event.target.value }))} />
+                      </label>
+                    </div>
+                    <div className={css.applicationEditActions}>
+                      <Button type="submit" variant="primary" disabled={savingApplication}>{savingApplication ? t('Сохранение...') : t('Сохранить')}</Button>
+                      <Button type="button" variant="secondary" onClick={handleCancelApplicationEdit} disabled={savingApplication}>{t('Отмена')}</Button>
+                    </div>
+                  </form>
+                )}
                 {(application.status === 'PENDING' || !application.status) && (
                   <div className={css.applicationActions}>
+                    <button
+                      className={css.editBtn}
+                      onClick={() => editingApplicationId === application.appId ? handleCancelApplicationEdit() : handleEditApplication(application)}
+                      disabled={savingApplication}
+                    >
+                      {editingApplicationId === application.appId ? t('Отмена') : t('Редактировать')}
+                    </button>
                     <button className={css.deleteBtn} onClick={() => void handleDeleteApplication(application.appId)}>{t('Удалить')}</button>
                   </div>
                 )}
