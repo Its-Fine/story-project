@@ -261,7 +261,7 @@ export const ApplicationPage = () => {
       {
         name: formData.workTitle,
         description: nominationName
-          ? `Номинация: ${nominationName}\n\n${formData.description}`
+          ? `${t('Номинация:')} ${t(nominationName)}\n\n${formData.description}`
           : formData.description,
         city: formData.city,
         organization: formData.organization || undefined,
@@ -444,7 +444,7 @@ export const ApplicationPage = () => {
                       : t('Выберите номинацию')}
                   </option>
                   {availableNominations.map(nom => (
-                    <option key={nom.id} value={nom.id}>{nom.name}</option>
+                    <option key={nom.id} value={nom.id}>{t(nom.name)}</option>
                   ))}
                 </select>
                 {errors.nomination && <div className={css.errorMessage}>{errors.nomination}</div>}
