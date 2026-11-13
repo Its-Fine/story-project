@@ -46,6 +46,8 @@ CREATE TABLE IF NOT EXISTS applications (
     mentor VARCHAR(255),
     is_team BOOLEAN NOT NULL DEFAULT FALSE,
     is_curator BOOLEAN NOT NULL DEFAULT FALSE,
+    status VARCHAR(40) NOT NULL DEFAULT 'PENDING',
+    rejection_reason TEXT,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     user_id BIGINT NOT NULL,
     contest_id BIGINT NOT NULL,
