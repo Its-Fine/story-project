@@ -55,12 +55,20 @@ export const ProfilePage = () => {
         return;
       }
       try {
-        const [accountResponse, contestsResponse, applicationsResponse] = await Promise.all([
-          usersApi.getAccountData(token),
-          applicationsApi.getContests(token),
-          applicationsApi.getUserApplications(token),
+        const accountPromise = usersApi.getAccountData(token);
+        const participantDataPromise = role === 'PARTICIPANT'
+          ? Promise.all([
+              applicationsApi.getContests(token),
+              applicationsApi.getUserApplications(token),
+            ])
+          : Promise.resolve(null);
+
+        const [accountResponse, participantData] = await Promise.all([
+          accountPromise,
+          participantDataPromise,
         ]);
         if (!active) return;
+
         if (accountResponse.data) {
           setAccount(accountResponse.data);
           if (!isEditing) {
@@ -72,18 +80,27 @@ export const ProfilePage = () => {
         } else {
           setError(accountResponse.error?.message || t('Не удалось загрузить профиль'));
         }
-        if (contestsResponse.data) setContests(contestsResponse.data);
-        if (applicationsResponse.data) setApplications(applicationsResponse.data);
-        else if (applicationsResponse.error) setError(applicationsResponse.error.message);
+
+        if (participantData) {
+          const [contestsResponse, applicationsResponse] = participantData;
+          if (contestsResponse.data) setContests(contestsResponse.data);
+          else if (contestsResponse.error) setError(contestsResponse.error.message);
+
+          if (applicationsResponse.data) setApplications(applicationsResponse.data);
+          else if (applicationsResponse.error) setError(applicationsResponse.error.message);
+        } else {
+          setContests([]);
+          setApplications([]);
+        }
       } catch (loadError) {
-        if (active) setError(loadError instanceof Error ? loadError.message : t('Ошибка при загрузке заявок'));
+        if (active) setError(loadError instanceof Error ? loadError.message : t('Ошибка при загрузке профиля'));
       } finally {
         if (active) setLoading(false);
       }
     };
     void load();
     return () => { active = false; };
-  }, [navigate, t, isEditing]);
+  }, [navigate, t, isEditing, role]);
 
   const goToApplication = () => {
     if (!contests.length) {
@@ -300,30 +317,32 @@ export const ProfilePage = () => {
 
         {error && <div className={css.errorMessage} role="alert">{error}</div>}
 
-        <section className={css.stats}>
-          <article className={css.statCard}><div className={css.statValue}>{loading ? '…' : stats.total}</div><div className={css.statLabel}>{t('Всего заявок')}</div></article>
-          <article className={css.statCard}><div className={css.statValue}>{loading ? '…' : stats.pending}</div><div className={css.statLabel}>{t('На рассмотрении')}</div></article>
-          <article className={css.statCard}><div className={css.statValue}>{loading ? '…' : stats.accepted}</div><div className={css.statLabel}>{t('Принято')}</div></article>
-          <article className={css.statCard}><div className={css.statValue}>{loading ? '…' : stats.rejected}</div><div className={css.statLabel}>{t('Отклонено')}</div></article>
-        </section>
+        {role === 'PARTICIPANT' && (
+          <>
+            <section className={css.stats}>
+              <article className={css.statCard}><div className={css.statValue}>{loading ? '…' : stats.total}</div><div className={css.statLabel}>{t('Всего заявок')}</div></article>
+              <article className={css.statCard}><div className={css.statValue}>{loading ? '…' : stats.pending}</div><div className={css.statLabel}>{t('На рассмотрении')}</div></article>
+              <article className={css.statCard}><div className={css.statValue}>{loading ? '…' : stats.accepted}</div><div className={css.statLabel}>{t('Принято')}</div></article>
+              <article className={css.statCard}><div className={css.statValue}>{loading ? '…' : stats.rejected}</div><div className={css.statLabel}>{t('Отклонено')}</div></article>
+            </section>
 
-        <div className={css.filters}>
-          <select className={css.filterSelect} value={filter} onChange={event => setFilter(event.target.value)}>
-            <option value="">{t('Все заявки')}</option>
-            <option value="PENDING">{t('На рассмотрении')}</option>
-            <option value="ACCEPTED">{t('Принятые')}</option>
-            <option value="REJECTED">{t('Отклоненные')}</option>
-          </select>
-        </div>
+            <div className={css.filters}>
+              <select className={css.filterSelect} value={filter} onChange={event => setFilter(event.target.value)}>
+                <option value="">{t('Все заявки')}</option>
+                <option value="PENDING">{t('На рассмотрении')}</option>
+                <option value="ACCEPTED">{t('Принятые')}</option>
+                <option value="REJECTED">{t('Отклоненные')}</option>
+              </select>
+            </div>
 
-        <h2 className={css.sectionTitle}>{t('Мои заявки')}</h2>
-        {loading ? <div className={css.loadingState}>{t('Загрузка...')}</div> : visibleApplications.length === 0 ? (
-          <div className={css.emptyState}>
-            <p className={css.emptyText}>{applications.length === 0 ? t('У вас пока нет заявок') : t('По выбранному фильтру заявок нет')}</p>
-            {applications.length === 0 && role === 'PARTICIPANT' && <Button variant="primary" onClick={goToApplication}>{t('Подать первую заявку')}</Button>}
-          </div>
-        ) : (
-          <div className={css.applicationsList}>
+            <h2 className={css.sectionTitle}>{t('Мои заявки')}</h2>
+            {loading ? <div className={css.loadingState}>{t('Загрузка...')}</div> : visibleApplications.length === 0 ? (
+              <div className={css.emptyState}>
+                <p className={css.emptyText}>{applications.length === 0 ? t('У вас пока нет заявок') : t('По выбранному фильтру заявок нет')}</p>
+                {applications.length === 0 && <Button variant="primary" onClick={goToApplication}>{t('Подать первую заявку')}</Button>}
+              </div>
+            ) : (
+              <div className={css.applicationsList}>
             {visibleApplications.map(application => (
               <article key={application.appId} className={css.applicationCard}>
                 <div className={css.applicationHeader}>
@@ -390,7 +409,9 @@ export const ProfilePage = () => {
                 )}
               </article>
             ))}
-          </div>
+              </div>
+            )}
+          </>
         )}
       </main>
     </>
