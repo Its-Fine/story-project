@@ -487,3 +487,54 @@
     }
   }
 }
+
+
+/* Consistent dashboard interaction and responsive polish */
+.statCard,
+.panel {
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.statCard:hover {
+  border-color: rgba(214, 19, 36, 0.2);
+  box-shadow: 0 12px 30px rgba(35, 35, 45, 0.07);
+  transform: translateY(-2px);
+}
+
+.panel {
+  border-color: rgba(35, 35, 45, 0.075);
+  box-shadow: 0 12px 34px rgba(35, 35, 45, 0.045);
+}
+
+.recentItem,
+.applicationCard,
+.userRow {
+  transition: background-color 0.18s ease;
+}
+
+.recentItem:hover,
+.userRow:hover {
+  background: #fcfcfd;
+}
+
+.tabs button:focus-visible,
+.outlineButton:focus-visible,
+.textButton:focus-visible {
+  outline: 2px solid rgba(214, 19, 36, 0.4);
+  outline-offset: 2px;
+}
+
+@media (max-width: 700px) {
+  .page { padding-bottom: 40px; }
+  .hero { border-radius: 17px; }
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .statCard { min-height: 100px; padding: 16px; }
+  .statValue { font-size: 29px; }
+  .panel { border-radius: 15px; }
+}
+
+@media (max-width: 420px) {
+  .stats { grid-template-columns: 1fr; }
+  .panelHeading { flex-direction: column; }
+  .resultCount { align-self: flex-start; }
+}
