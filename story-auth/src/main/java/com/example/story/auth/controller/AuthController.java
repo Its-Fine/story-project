@@ -122,9 +122,17 @@ public class AuthController {
             String email = jwtService.detailsFromToken(token).getUsername();
             AuthUser user = authUserRepository.findByEmail(email)
                     .orElseThrow(() -> new RuntimeException("User not found"));
+            String currentPassword = body.get("current_password");
+            if (currentPassword == null || !passwordEncoder.matches(currentPassword, user.getPassword())) {
+                return ResponseEntity.badRequest().body(new ErrorDto("Current password is incorrect"));
+            }
+
             String newPassword = body.get("new_password");
-            if (newPassword == null || newPassword.length() < 8) {
-                return ResponseEntity.badRequest().body(new ErrorDto("Password must be at least 8 characters"));
+            if (newPassword == null || newPassword.length() < 8 || newPassword.length() > 255) {
+                return ResponseEntity.badRequest().body(new ErrorDto("Password must be between 8 and 255 characters"));
+            }
+            if (passwordEncoder.matches(newPassword, user.getPassword())) {
+                return ResponseEntity.badRequest().body(new ErrorDto("New password must differ from current password"));
             }
             user.setPassword(passwordEncoder.encode(newPassword));
             authUserRepository.save(user);
