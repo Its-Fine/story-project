@@ -49,7 +49,7 @@ export interface SendApplicationRequest {
   city: string;
   organization?: string;
   mentorName?: string;
-  members: unknown[];
+  members: ApplicationMemberUpdate[];
   isTeam: boolean;
   isCurator: boolean;
 }
