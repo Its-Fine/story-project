@@ -442,3 +442,28 @@
   color: #a50e1c;
   font-size: 12px;
 }
+
+
+.passwordSection {
+  padding: 18px;
+  margin-bottom: 22px;
+  border: 1px solid $border;
+  border-radius: 14px;
+  background: #fff;
+
+  h2 {
+    margin: 0 0 16px;
+    color: $secondary;
+    font-size: 17px;
+  }
+
+  .profileFields {
+    margin-bottom: 14px;
+  }
+}
+
+.successMessage {
+  margin-top: 12px;
+  color: #237a45;
+  font-size: 13px;
+}
