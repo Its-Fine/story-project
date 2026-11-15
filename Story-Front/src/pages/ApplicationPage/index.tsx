@@ -30,6 +30,9 @@ export const ApplicationPage = () => {
     mentorName: ''
   });
 
+  const [isTeam, setIsTeam] = useState(false);
+  const [isCurator, setIsCurator] = useState(false);
+  const [members, setMembers] = useState<Array<{ firstName: string; lastName: string; birthDate: string }>>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
@@ -128,27 +131,32 @@ export const ApplicationPage = () => {
     }
   };
 
+  const updateNominationsByBirthDate = (birthDate: string) => {
+    if (!birthDate) {
+      setAvailableNominations([]);
+      return;
+    }
+    const age = calculateAge(birthDate);
+    const group = age >= 10 && age <= 13
+      ? nominationsByAge.junior
+      : age >= 14 && age <= 17
+        ? nominationsByAge.middle
+        : age >= 18 && age <= 35
+          ? nominationsByAge.senior
+          : null;
+    setAvailableNominations(group ? group.list : []);
+  };
+
   const handleBirthDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const date = e.target.value;
     setFormData(prev => ({ ...prev, birthDate: date }));
     const ageValidation = validateAge(date);
-    if (date && !ageValidation.isValid) {
+    if (date && !isCurator && !ageValidation.isValid) {
       setErrors(prev => ({ ...prev, birthDate: ageValidation.message }));
     } else {
       setErrors(prev => ({ ...prev, birthDate: '' }));
     }
-    if (date) {
-      const age = calculateAge(date);
-      let group = null;
-      if (age >= 10 && age <= 13) group = nominationsByAge.junior;
-      else if (age >= 14 && age <= 17) group = nominationsByAge.middle;
-      else if (age >= 18 && age <= 35) group = nominationsByAge.senior;
-      if (group) {
-        setAvailableNominations(group.list);
-      } else {
-        setAvailableNominations([]);
-      }
-    }
+    updateNominationsByBirthDate(isCurator ? (members[0]?.birthDate || '') : date);
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -177,6 +185,11 @@ export const ApplicationPage = () => {
     return (bytes / (1024 * 1024)).toFixed(1) + (language === 'en' ? ' MB' : ' МБ');
   };
 
+  const updateMember = (index: number, field: 'firstName' | 'lastName' | 'birthDate', value: string) => {
+    setMembers(previous => previous.map((member, i) => i === index ? { ...member, [field]: value } : member));
+    if (isCurator && index === 0 && field === 'birthDate') updateNominationsByBirthDate(value);
+  };
+
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
     let isValid = true;
@@ -195,12 +208,31 @@ export const ApplicationPage = () => {
       isValid = false;
     }
 
-    if (formData.birthDate) {
+    if (formData.birthDate && !isCurator) {
       const ageValidation = validateAge(formData.birthDate);
       if (!ageValidation.isValid) {
         newErrors.birthDate = ageValidation.message;
         isValid = false;
       }
+    }
+
+    if (isTeam) {
+      if (members.length === 0) {
+        newErrors.members = t('Добавьте хотя бы одного участника команды');
+        isValid = false;
+      }
+      members.forEach((member, index) => {
+        if (!member.firstName.trim() || !member.lastName.trim() || !member.birthDate) {
+          newErrors[`member-${index}`] = t('Заполните ФИО и дату рождения участника');
+          isValid = false;
+        } else {
+          const memberAge = validateAge(member.birthDate);
+          if (!memberAge.isValid) {
+            newErrors[`member-${index}`] = memberAge.message;
+            isValid = false;
+          }
+        }
+      });
     }
 
     if (uploadedFiles.length === 0) {
@@ -266,9 +298,13 @@ export const ApplicationPage = () => {
         city: formData.city,
         organization: formData.organization || undefined,
         mentorName: formData.mentorName || undefined,
-        members: [],
-        isTeam: false,
-        isCurator: false,
+        members: isTeam ? members.map(member => ({
+          firstName: member.firstName.trim(),
+          lastName: member.lastName.trim(),
+          birthDate: member.birthDate,
+        })) : [],
+        isTeam,
+        isCurator: isTeam && isCurator,
       },
       contestId || '',
       token
@@ -308,6 +344,9 @@ export const ApplicationPage = () => {
     setUploadedFiles([]);
     setErrors({});
     setAvailableNominations([]);
+    setIsTeam(false);
+    setIsCurator(false);
+    setMembers([]);
   };
 
   const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
@@ -421,6 +460,71 @@ export const ApplicationPage = () => {
                   maxLength={200}
                 />
               </div>
+            </div>
+
+            <div className={css.formSection}>
+              <h2 className={css.sectionTitle}>{t('Состав заявки')}</h2>
+              <label className={css.checkboxLabel}>
+                <input type="checkbox" checked={isTeam} onChange={event => {
+                  setIsTeam(event.target.checked);
+                  if (!event.target.checked) {
+                    setIsCurator(false);
+                    setMembers([]);
+                    setErrors(previous => ({ ...previous, members: '' }));
+                    updateNominationsByBirthDate(formData.birthDate);
+                  }
+                }} />
+                <span>{t('Командная заявка')}</span>
+              </label>
+
+              {isTeam && (
+                <>
+                  <label className={css.checkboxLabel}>
+                    <input type="checkbox" checked={isCurator} onChange={event => {
+                      const checked = event.target.checked;
+                      setIsCurator(checked);
+                      updateNominationsByBirthDate(checked ? (members[0]?.birthDate || '') : formData.birthDate);
+                      if (checked) setErrors(previous => ({ ...previous, birthDate: '' }));
+                    }} />
+                    <span>{t('Я являюсь куратором команды')}</span>
+                  </label>
+                  <p className={css.fileUploadHint}>{t('Укажите всех участников команды. Данные заявителя заполняются в личной части формы.')}</p>
+                  {members.map((member, index) => (
+                    <div key={index} className={css.memberCard}>
+                      <div className={css.formRow}>
+                        <div className={css.formGroup}>
+                          <label className={css.label}>{t('Имя участника')} *</label>
+                          <input className={css.formControl} value={member.firstName} maxLength={50}
+                            onChange={event => updateMember(index, 'firstName', event.target.value)} />
+                        </div>
+                        <div className={css.formGroup}>
+                          <label className={css.label}>{t('Фамилия участника')} *</label>
+                          <input className={css.formControl} value={member.lastName} maxLength={50}
+                            onChange={event => updateMember(index, 'lastName', event.target.value)} />
+                        </div>
+                      </div>
+                      <div className={css.formGroup}>
+                        <label className={css.label}>{t('Дата рождения участника')} *</label>
+                        <input type="date" className={css.formControl} value={member.birthDate}
+                          onChange={event => updateMember(index, 'birthDate', event.target.value)} />
+                      </div>
+                      {errors[`member-${index}`] && <div className={css.errorMessage}>{errors[`member-${index}`]}</div>}
+                      <button type="button" className={css.removeMemberButton}
+                        onClick={() => {
+                          setMembers(previous => previous.filter((_, i) => i !== index));
+                          if (isCurator && index === 0) updateNominationsByBirthDate(members[1]?.birthDate || '');
+                        }}>
+                        {t('Удалить участника')}
+                      </button>
+                    </div>
+                  ))}
+                  {errors.members && <div className={css.errorMessage}>{errors.members}</div>}
+                  <button type="button" className={`${css.btn} ${css.btnSecondary}`}
+                    onClick={() => setMembers(previous => [...previous, { firstName: '', lastName: '', birthDate: '' }])}>
+                    + {t('Добавить участника')}
+                  </button>
+                </>
+              )}
             </div>
 
             <div className={css.formSection}>

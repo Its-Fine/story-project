@@ -442,3 +442,89 @@
   color: #a50e1c;
   font-size: 12px;
 }
+
+
+.passwordSection {
+  padding: 18px;
+  margin-bottom: 22px;
+  border: 1px solid $border;
+  border-radius: 14px;
+  background: #fff;
+
+  h2 {
+    margin: 0 0 16px;
+    color: $secondary;
+    font-size: 17px;
+  }
+
+  .profileFields {
+    margin-bottom: 14px;
+  }
+}
+
+.successMessage {
+  margin-top: 12px;
+  color: #237a45;
+  font-size: 13px;
+}
+
+
+/* Profile and security sections */
+.container {
+  max-width: 1160px;
+  padding: 30px 28px 56px;
+}
+
+.header {
+  border-radius: 18px;
+  box-shadow: 0 12px 32px rgba(35, 35, 45, 0.06);
+}
+
+.profileSummary,
+.passwordSection,
+.statCard,
+.applicationCard,
+.emptyState {
+  box-shadow: 0 8px 24px rgba(35, 35, 45, 0.035);
+}
+
+.passwordSection {
+  padding: 22px;
+  border-color: rgba(35, 35, 45, 0.08);
+
+  h2 { font-size: 18px; }
+}
+
+.passwordSection .profileFields input {
+  min-height: 44px;
+  padding: 10px 12px;
+  border-radius: 9px;
+}
+
+.passwordSection .profileFields input:focus {
+  outline: 2px solid rgba(214, 19, 36, 0.12);
+  border-color: $primary;
+}
+
+.applicationCard {
+  padding: 18px;
+  border-radius: 15px;
+}
+
+.applicationHeader {
+  padding: 11px 13px;
+  border-radius: 10px;
+}
+
+.errorMessage {
+  padding: 12px 15px;
+  font-size: 13px;
+}
+
+@media (max-width: 700px) {
+  .container { padding: 20px 14px 40px; }
+  .header { gap: 14px; }
+  .headerActions { flex-direction: row; flex-wrap: wrap; }
+  .passwordSection { padding: 17px; }
+  .profileEditActions { flex-wrap: wrap; }
+}

@@ -22,6 +22,9 @@ export const ProfilePage = () => {
   const [error, setError] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
+  const [passwordDraft, setPasswordDraft] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [passwordMessage, setPasswordMessage] = useState('');
   const [profileDraft, setProfileDraft] = useState({ firstName: '', lastName: '' });
   const [editingApplicationId, setEditingApplicationId] = useState<number | null>(null);
   const [applicationDraft, setApplicationDraft] = useState({
@@ -135,6 +138,44 @@ export const ProfilePage = () => {
       setError(saveError instanceof Error ? saveError.message : t('Не удалось сохранить профиль'));
     } finally {
       setSavingProfile(false);
+    }
+  };
+
+  const handleChangePassword = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const token = localStorage.getItem('token');
+    if (!token || savingPassword) return;
+
+    if (!/^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=\\S+$).{8,255}$/.test(passwordDraft.newPassword)) {
+      setError(t('Пароль должен содержать 8–255 символов, цифру, строчную и заглавную буквы без пробелов'));
+      return;
+    }
+    if (passwordDraft.newPassword !== passwordDraft.confirmPassword) {
+      setError(t('Новые пароли не совпадают'));
+      return;
+    }
+    if (passwordDraft.currentPassword === passwordDraft.newPassword) {
+      setError(t('Новый пароль должен отличаться от текущего'));
+      return;
+    }
+
+    setSavingPassword(true);
+    setError('');
+    setPasswordMessage('');
+    try {
+      const response = await usersApi.updatePassword({
+        currentPassword: passwordDraft.currentPassword,
+        newPassword: passwordDraft.newPassword,
+      }, token);
+      if (response.status !== 204 && response.status !== 200) {
+        throw new Error(response.error?.message || t('Не удалось изменить пароль'));
+      }
+      setPasswordDraft({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      setPasswordMessage(t('Пароль успешно изменён'));
+    } catch (passwordError) {
+      setError(passwordError instanceof Error ? passwordError.message : t('Не удалось изменить пароль'));
+    } finally {
+      setSavingPassword(false);
     }
   };
 
@@ -313,6 +354,37 @@ export const ProfilePage = () => {
               <Button variant="secondary" onClick={handleEditProfile} disabled={!account}>{t('Редактировать профиль')}</Button>
             </>
           )}
+        </section>
+
+        <section className={css.passwordSection}>
+          <h2>{t('Изменение пароля')}</h2>
+          <form onSubmit={handleChangePassword}>
+            <div className={css.profileFields}>
+              <label>
+                <span>{t('Текущий пароль')}</span>
+                <input type="password" autoComplete="current-password" value={passwordDraft.currentPassword}
+                  onChange={event => setPasswordDraft(previous => ({ ...previous, currentPassword: event.target.value }))} required />
+              </label>
+              <label>
+                <span>{t('Новый пароль')}</span>
+                <input type="password" autoComplete="new-password" minLength={8} maxLength={255}
+                  value={passwordDraft.newPassword}
+                  onChange={event => setPasswordDraft(previous => ({ ...previous, newPassword: event.target.value }))} required />
+              </label>
+              <label>
+                <span>{t('Повторите новый пароль')}</span>
+                <input type="password" autoComplete="new-password" minLength={8} maxLength={255}
+                  value={passwordDraft.confirmPassword}
+                  onChange={event => setPasswordDraft(previous => ({ ...previous, confirmPassword: event.target.value }))} required />
+              </label>
+            </div>
+            <div className={css.profileEditActions}>
+              <Button type="submit" variant="primary" disabled={savingPassword}>
+                {savingPassword ? t('Сохранение...') : t('Изменить пароль')}
+              </Button>
+            </div>
+          </form>
+          {passwordMessage && <div className={css.successMessage} role="status">{passwordMessage}</div>}
         </section>
 
         {error && <div className={css.errorMessage} role="alert">{error}</div>}
