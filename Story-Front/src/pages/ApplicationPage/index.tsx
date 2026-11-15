@@ -132,7 +132,7 @@ export const ApplicationPage = () => {
     const date = e.target.value;
     setFormData(prev => ({ ...prev, birthDate: date }));
     const ageValidation = validateAge(date);
-    if (date && !ageValidation.isValid) {
+    if (date && !isCurator && !ageValidation.isValid) {
       setErrors(prev => ({ ...prev, birthDate: ageValidation.message }));
     } else {
       setErrors(prev => ({ ...prev, birthDate: '' }));
