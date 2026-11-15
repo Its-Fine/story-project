@@ -213,10 +213,7 @@ const english: Record<string, string> = {
   'Новый пароль должен отличаться от текущего': 'The new password must differ from the current password',
   'Не удалось изменить пароль': 'Could not change the password',
   'Пароль успешно изменён': 'Password changed successfully',
-  'Сохранение...': 'Saving...',
   'Изменить пароль': 'Change password',
-  'Загрузка...': 'Loading...',
-  'Подача заявки': 'Submit an application'
 };
 
 interface LanguageContextValue {

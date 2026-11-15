@@ -146,7 +146,7 @@ export const ProfilePage = () => {
     const token = localStorage.getItem('token');
     if (!token || savingPassword) return;
 
-    if (!/^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=\\S+$).{8,255}$/.test(passwordDraft.newPassword)) {
+    if (!/^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=\S+$).{8,255}$/.test(passwordDraft.newPassword)) {
       setError(t('Пароль должен содержать 8–255 символов, цифру, строчную и заглавную буквы без пробелов'));
       return;
     }
