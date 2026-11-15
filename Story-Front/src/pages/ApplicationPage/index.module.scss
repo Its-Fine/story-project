@@ -315,3 +315,41 @@ body {
     color: $primary;
   }
 }
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0;
+  color: $secondary;
+  font-size: 14px;
+  font-weight: 600;
+
+  input {
+    width: 18px;
+    height: 18px;
+    accent-color: $primary;
+  }
+}
+
+.memberCard {
+  margin: 18px 0;
+  padding: 18px;
+  border: 1px solid $border;
+  border-radius: 12px;
+  background: #fafafa;
+}
+
+.removeMemberButton {
+  padding: 8px 14px;
+  border: 1px solid $error;
+  border-radius: 999px;
+  background: white;
+  color: $error;
+  cursor: pointer;
+
+  &:hover {
+    background: $error;
+    color: white;
+  }
+}
