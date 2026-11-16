@@ -119,9 +119,15 @@ public class AuthController {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorDto("Invalid token format"));
             }
             String token = authHeader.substring(7);
+            if (!jwtService.isAccessTokenValid(token)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorDto("Invalid access token"));
+            }
             String email = jwtService.detailsFromToken(token).getUsername();
             AuthUser user = authUserRepository.findByEmail(email)
                     .orElseThrow(() -> new RuntimeException("User not found"));
+            if (Boolean.TRUE.equals(user.getBanned())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorDto("User is banned"));
+            }
             String newPassword = body.get("new_password");
             if (newPassword == null || newPassword.length() < 8) {
                 return ResponseEntity.badRequest().body(new ErrorDto("Password must be at least 8 characters"));
@@ -142,6 +148,9 @@ public class AuthController {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorDto("Invalid token format"));
             }
             String token = authHeader.substring(7);
+            if (!jwtService.isAccessTokenValid(token)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorDto("Invalid access token"));
+            }
             var userDetails = (org.springframework.security.core.userdetails.User) authService.detailsFromToken(token);
             String role = userDetails.getAuthorities().stream()
                     .findFirst()
