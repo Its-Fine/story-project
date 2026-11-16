@@ -20,6 +20,10 @@ import java.util.Date;
 @RequiredArgsConstructor
 public class JwtService {
 
+    private static final String TOKEN_TYPE_CLAIM = "token_type";
+    private static final String ACCESS_TOKEN = "ACCESS";
+    private static final String REFRESH_TOKEN = "REFRESH";
+
     private final StoryAuthProperties storyAuthProperties;
 
     private Key getSigningKey() {
@@ -27,27 +31,26 @@ public class JwtService {
     }
 
     public String generateAccessToken(AuthUser user) {
-        return Jwts.builder()
-                .setSubject(user.getEmail())
-                .claim("role", user.getRole())
-                .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + storyAuthProperties.getJwt().getExpirationAccess().toMillis()))
-                .signWith(getSigningKey(), io.jsonwebtoken.SignatureAlgorithm.HS256)
-                .compact();
+        return generateToken(user, ACCESS_TOKEN, storyAuthProperties.getJwt().getExpirationAccess().toMillis());
     }
 
     public String generateRefreshToken(AuthUser user) {
+        return generateToken(user, REFRESH_TOKEN, storyAuthProperties.getJwt().getExpirationRefresh().toMillis());
+    }
+
+    private String generateToken(AuthUser user, String tokenType, long expirationMillis) {
         return Jwts.builder()
                 .setSubject(user.getEmail())
                 .claim("role", user.getRole())
+                .claim(TOKEN_TYPE_CLAIM, tokenType)
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + storyAuthProperties.getJwt().getExpirationRefresh().toMillis()))
+                .setExpiration(new Date(System.currentTimeMillis() + expirationMillis))
                 .signWith(getSigningKey(), io.jsonwebtoken.SignatureAlgorithm.HS256)
                 .compact();
     }
 
     public UserDetails detailsFromToken(String token) {
-        Claims claims = Jwts.parserBuilder().setSigningKey(getSigningKey()).build().parseClaimsJws(token).getBody();
+        Claims claims = parseClaims(token);
 
         String email = claims.getSubject();
         String role = "ROLE_" + claims.get("role", String.class);
@@ -55,12 +58,31 @@ public class JwtService {
         return new User(email, "*****", Collections.singleton(new SimpleGrantedAuthority(role)));
     }
 
-    public boolean isTokenValid(String token) {
+    public boolean isAccessTokenValid(String token) {
+        return isTokenValid(token, ACCESS_TOKEN);
+    }
+
+    public boolean isRefreshTokenValid(String token) {
+        return isTokenValid(token, REFRESH_TOKEN);
+    }
+
+    private boolean isTokenValid(String token, String expectedType) {
         try {
-            Claims claims = Jwts.parserBuilder().setSigningKey(getSigningKey()).build().parseClaimsJws(token).getBody();
-            return !claims.getExpiration().before(new Date());
+            Claims claims = parseClaims(token);
+            Date expiration = claims.getExpiration();
+            return expectedType.equals(claims.get(TOKEN_TYPE_CLAIM, String.class))
+                    && expiration != null
+                    && expiration.after(new Date());
         } catch (Exception e) {
             return false;
         }
+    }
+
+    private Claims parseClaims(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(getSigningKey())
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
     }
 }
