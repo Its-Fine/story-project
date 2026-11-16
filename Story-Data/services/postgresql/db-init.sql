@@ -89,6 +89,19 @@ CREATE TABLE IF NOT EXISTS members (
 
 -- Индексы для members
 CREATE INDEX IF NOT EXISTS fk_members_application ON members(application_id);
+
+-- Global event settings. The single row survives backend restarts and stores
+-- whether creation of new applications is currently closed.
+CREATE TABLE IF NOT EXISTS event_settings (
+    id SMALLINT PRIMARY KEY,
+    applications_closed BOOLEAN NOT NULL DEFAULT FALSE,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT chk_event_settings_singleton CHECK (id = 1)
+);
+
+INSERT INTO event_settings (id, applications_closed)
+VALUES (1, FALSE)
+ON CONFLICT (id) DO NOTHING;
 -- init.sql
 -- Создание таблиц для JPA сущностей
 

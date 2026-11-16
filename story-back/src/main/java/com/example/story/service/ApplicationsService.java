@@ -33,6 +33,7 @@ public class ApplicationsService {
     private final ApplicationMapper applicationMapper;
     private final MemberMapper memberMapper;
     private final MinioStorageService storageService;
+    private final EventService eventService;
 
     public List<ResponseApplicationDto> obtainAll() {
         UserEntity user = getCurrentUser(userRepository);
@@ -72,6 +73,10 @@ public class ApplicationsService {
     }
 
     public ResponseApplicationIdDto create(Long conId, RequestApplicationDto dto) {
+        if (eventService.isApplicationsClosed()) {
+            throw new IllegalStateException("Application submission is closed");
+        }
+
         UserEntity user = getUserAndCheckConditions(conId, dto);
 
         ContestEntity contest = contestRepository.findById(conId).orElseThrow(() -> new RuntimeException("Contest not found"));

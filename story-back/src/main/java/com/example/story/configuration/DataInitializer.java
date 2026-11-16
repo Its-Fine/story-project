@@ -1,8 +1,10 @@
 package com.example.story.configuration;
 
 import com.example.story.entity.ContestEntity;
+import com.example.story.entity.EventSettingsEntity;
 import com.example.story.entity.UserEntity;
 import com.example.story.repository.ContestRepository;
+import com.example.story.repository.EventSettingsRepository;
 import com.example.story.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -24,6 +26,7 @@ public class DataInitializer implements ApplicationRunner {
 
     private final UserRepository userRepository;
     private final ContestRepository contestRepository;
+    private final EventSettingsRepository eventSettingsRepository;
     private final StoryProperties storyProperties;
     private final PasswordEncoder passwordEncoder;
 
@@ -32,6 +35,7 @@ public class DataInitializer implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         createAdminIfNotExists();
         fillContestsIfNotExist();
+        createEventSettingsIfNotExists();
     }
 
     private void createAdminIfNotExists() {
@@ -58,6 +62,17 @@ public class DataInitializer implements ApplicationRunner {
         else {
             System.out.println("Admin user already exists, skipping creation");
         }
+    }
+
+    private void createEventSettingsIfNotExists() {
+        if (eventSettingsRepository.existsById((short) 1)) {
+            return;
+        }
+
+        EventSettingsEntity settings = new EventSettingsEntity();
+        settings.setId((short) 1);
+        settings.setApplicationsClosed(false);
+        eventSettingsRepository.save(settings);
     }
 
     private void fillContestsIfNotExist() {
