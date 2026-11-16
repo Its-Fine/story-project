@@ -19,6 +19,9 @@ import java.util.Date;
 @RequiredArgsConstructor
 public class JwtService {
 
+    private static final String TOKEN_TYPE_CLAIM = "token_type";
+    private static final String ACCESS_TOKEN = "ACCESS";
+
     private final StoryProperties storyProperties;
 
     private Key getSigningKey() {
@@ -26,7 +29,7 @@ public class JwtService {
     }
 
     public UserDetails detailsFromToken(String token) {
-        Claims claims = Jwts.parserBuilder().setSigningKey(getSigningKey()).build().parseClaimsJws(token).getBody();
+        Claims claims = parseClaims(token);
 
         String email = claims.getSubject();
         String role = "ROLE_" + claims.get("role", String.class);
@@ -36,10 +39,21 @@ public class JwtService {
 
     public boolean isTokenValid(String token) {
         try {
-            Claims claims = Jwts.parserBuilder().setSigningKey(getSigningKey()).build().parseClaimsJws(token).getBody();
-            return !claims.getExpiration().before(new Date());
+            Claims claims = parseClaims(token);
+            Date expiration = claims.getExpiration();
+            return ACCESS_TOKEN.equals(claims.get(TOKEN_TYPE_CLAIM, String.class))
+                    && expiration != null
+                    && expiration.after(new Date());
         } catch (Exception e) {
             return false;
         }
+    }
+
+    private Claims parseClaims(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(getSigningKey())
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
     }
 }
