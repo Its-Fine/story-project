@@ -56,7 +56,10 @@ public class ApplicationsController {
     @PutMapping("/{appId}")
     public ResponseEntity<?> putByAppId(@PathVariable Long appId, @RequestBody @Validated(Group.Update.class) RequestApplicationDto dto) {
         try {
-            if (eventService.getClosed()) return ResponseEntity.status(HttpStatus.GONE).build();
+            if (eventService.getClosed()) {
+                return ResponseEntity.status(HttpStatus.GONE)
+                        .body(new ResponseErrorDto("Приём заявок закрыт. Редактирование заявок временно недоступно."));
+            }
             else {
                 applicationService.update(appId, dto);
                 return ResponseEntity.status(HttpStatus.NO_CONTENT).build();

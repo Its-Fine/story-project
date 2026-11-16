@@ -173,6 +173,8 @@ const english: Record<string, string> = {
   'Не удалось загрузить файл': 'Could not upload the file',
   'Не удалось создать заявку': 'Could not create the application',
   'Приём заявок закрыт. Новые заявки временно не принимаются.': 'Application submission is closed. New applications are temporarily unavailable.',
+  'Приём заявок закрыт. Редактирование заявок временно недоступно.': 'Application submission is closed. Editing applications is temporarily unavailable.',
+  'Черновик восстановлен. Файлы нужно прикрепить заново.': 'Your draft was restored. Please attach the files again.',
   'Заявка создана. Загружаем файлы...': 'Application created. Uploading files...',
   'Файл не загружен, черновик заявки удалён. Проверьте формат и повторите.': 'File upload failed. The draft application was deleted. Check the file format and try again.',
   'Заявка отправлена!': 'Application submitted!',

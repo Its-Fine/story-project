@@ -1,8 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { DecorLines } from '../../components/Layout/DecorLines';
 import { Button } from '../../components/UI/Button';
 import { adminApi, AdminApplication, AdminUser, AdminWork } from '../../api/admin';
+import { authApi } from '../../api/auth';
 import { getRoleLabel } from '../../utils/roleLabels';
+import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import css from './index.module.scss';
 
@@ -34,6 +37,8 @@ const formatSize = (bytes: number, language: 'ru' | 'en') => {
 };
 
 export const AdminPage = () => {
+  const navigate = useNavigate();
+  const { signOut } = useAuth();
   const { t, language } = useLanguage();
   const locale = language === 'en' ? 'en-US' : 'ru-RU';
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
@@ -49,6 +54,19 @@ export const AdminPage = () => {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    const token = getToken();
+    try {
+      if (token) await authApi.logout(token);
+    } finally {
+      signOut();
+      navigate('/', { replace: true });
+    }
+  };
 
   const loadDashboard = useCallback(async () => {
     const token = getToken();
@@ -195,7 +213,12 @@ export const AdminPage = () => {
             <h1 className={css.title}>{t('Панель администратора')}</h1>
             <p className={css.subtitle}>{t('Участники, заявки, работы и настройки приёма.')}</p>
           </div>
-          <Button variant="secondary" onClick={downloadReport} disabled={busy}>{t('Скачать Excel-отчёт')}</Button>
+          <div className={css.heroActions}>
+            <Button variant="secondary" onClick={downloadReport} disabled={busy}>{t('Скачать Excel-отчёт')}</Button>
+            <Button variant="secondary" onClick={handleLogout} disabled={loggingOut}>
+              {loggingOut ? t('Выход...') : t('Выйти')}
+            </Button>
+          </div>
         </section>
 
         {error && <div className={css.error} role="alert">{error}</div>}
