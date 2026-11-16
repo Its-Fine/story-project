@@ -2,7 +2,6 @@ package com.example.story.auth.service;
 
 import com.example.story.auth.dto.LoginRequestDto;
 import com.example.story.auth.dto.SignupRequestDto;
-import com.example.story.auth.dto.AuthResponseDto;
 import com.example.story.auth.entity.AuthUser;
 import com.example.story.auth.repository.AuthUserRepository;
 import com.example.story.auth.security.JwtService;
@@ -76,17 +75,21 @@ public class AuthService {
     }
 
     public String refresh(String refreshToken) {
-        org.springframework.security.core.userdetails.UserDetails details = jwtService.detailsFromToken(refreshToken);
-
-        if (!jwtService.isTokenValid(refreshToken)) {
+        if (!jwtService.isRefreshTokenValid(refreshToken)) {
             throw new RuntimeException("Invalid refresh token");
         }
 
+        UserDetails details = jwtService.detailsFromToken(refreshToken);
         AuthUser user = authUserRepository.findByEmail(details.getUsername())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
+        if (Boolean.TRUE.equals(user.getBanned())) {
+            throw new RuntimeException("User is banned");
+        }
+
         return jwtService.generateAccessToken(user);
     }
+
     public UserDetails detailsFromToken(String token) {
         return jwtService.detailsFromToken(token);
     }
