@@ -312,7 +312,10 @@ export const ApplicationPage = () => {
 
     const appId = response.data?.appId;
     if (response.status !== 201 || !appId) {
-      showNotification(response.error?.message || t('Не удалось создать заявку'), 'error');
+      const message = response.status === 410
+        ? t('Приём заявок закрыт. Новые заявки временно не принимаются.')
+        : response.error?.message || t('Не удалось создать заявку');
+      showNotification(message, 'error');
       return;
     }
 

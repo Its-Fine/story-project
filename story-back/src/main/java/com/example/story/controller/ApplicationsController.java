@@ -25,7 +25,10 @@ public class ApplicationsController {
     @PostMapping()
     public ResponseEntity<?> post(@RequestParam Long conId, @RequestBody @Validated(Group.Create.class) RequestApplicationDto dto) {
         try {
-            if (eventService.isApplicationsClosed()) return ResponseEntity.status(HttpStatus.GONE).build();
+            if (eventService.isApplicationsClosed()) {
+                return ResponseEntity.status(HttpStatus.GONE)
+                        .body(new ResponseErrorDto("Приём заявок закрыт. Новые заявки временно не принимаются."));
+            }
             else return ResponseEntity.status(HttpStatus.CREATED).body(applicationService.create(conId, dto));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ResponseErrorDto(e.getMessage()));

@@ -172,6 +172,7 @@ const english: Record<string, string> = {
   'Заполните поле': 'This field is required',
   'Не удалось загрузить файл': 'Could not upload the file',
   'Не удалось создать заявку': 'Could not create the application',
+  'Приём заявок закрыт. Новые заявки временно не принимаются.': 'Application submission is closed. New applications are temporarily unavailable.',
   'Заявка создана. Загружаем файлы...': 'Application created. Uploading files...',
   'Файл не загружен, черновик заявки удалён. Проверьте формат и повторите.': 'File upload failed. The draft application was deleted. Check the file format and try again.',
   'Заявка отправлена!': 'Application submitted!',
