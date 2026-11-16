@@ -4,7 +4,6 @@ import { DecorLines } from '../../components/Layout/DecorLines';
 import { SignInForm } from '../../components/Forms/SignInForm';
 import { SignUpForm } from '../../components/Forms/SignUpForm';
 import { Notification } from '../../components/UI/Notification';
-import { Logo } from '../../components/Logo/Logo';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import css from './index.module.scss';
@@ -42,18 +41,11 @@ export const MainPage = () => {
         <div className={css.container}>
           <div className={css.content}>
             <section className={css.hero}>
-              <div className={css.heroCopy}>
-                <span className={css.eyebrow}>{t('Творческий конкурс')}</span>
-                <Logo size="large" />
-                <h1 className={css.heroTitle}>{t('Превратите идею в историю')}</h1>
-                <p className={css.heroDescription}>
-                  {t('Подайте индивидуальную или командную заявку, расскажите о своей работе и следите за её статусом в личном кабинете.')}
-                </p>
-                <div className={css.heroNote}>
-                  <span className={css.heroDot} />
-                  {t('Регистрация и подача заявки — в одном кабинете')}
-                </div>
-              </div>
+              <img
+                className={css.heroLogo}
+                src="/story-logo.png"
+                alt="Международный творческий конкурс Сказка #Дизайн"
+              />
             </section>
 
             <section className={css.formContainer} aria-label={t('Личный кабинет')}>
