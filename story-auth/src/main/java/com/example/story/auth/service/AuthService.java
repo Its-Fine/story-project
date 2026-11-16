@@ -13,7 +13,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.Period;
 import java.util.Map;
-import org.springframework.security.core.userdetails.UserDetails;
 
 @Service
 @Transactional
@@ -75,12 +74,8 @@ public class AuthService {
     }
 
     public String refresh(String refreshToken) {
-        if (!jwtService.isRefreshTokenValid(refreshToken)) {
-            throw new RuntimeException("Invalid refresh token");
-        }
-
-        UserDetails details = jwtService.detailsFromToken(refreshToken);
-        AuthUser user = authUserRepository.findByEmail(details.getUsername())
+        String email = jwtService.extractRefreshTokenSubject(refreshToken);
+        AuthUser user = authUserRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         if (Boolean.TRUE.equals(user.getBanned())) {
@@ -90,7 +85,4 @@ public class AuthService {
         return jwtService.generateAccessToken(user);
     }
 
-    public UserDetails detailsFromToken(String token) {
-        return jwtService.detailsFromToken(token);
-    }
 }

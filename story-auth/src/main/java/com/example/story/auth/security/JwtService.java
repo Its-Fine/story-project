@@ -3,17 +3,15 @@ package com.example.story.auth.security;
 import com.example.story.auth.config.StoryAuthProperties;
 import com.example.story.auth.entity.AuthUser;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import java.security.Key;
-import java.util.Collections;
 import java.util.Date;
 
 @Service
@@ -39,23 +37,23 @@ public class JwtService {
     }
 
     private String generateToken(AuthUser user, String tokenType, long expirationMillis) {
+        Date now = new Date();
         return Jwts.builder()
                 .setSubject(user.getEmail())
                 .claim("role", user.getRole())
                 .claim(TOKEN_TYPE_CLAIM, tokenType)
-                .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + expirationMillis))
+                .setIssuedAt(now)
+                .setExpiration(new Date(now.getTime() + expirationMillis))
                 .signWith(getSigningKey(), io.jsonwebtoken.SignatureAlgorithm.HS256)
                 .compact();
     }
 
-    public UserDetails detailsFromToken(String token) {
-        Claims claims = parseClaims(token);
+    public String extractAccessTokenSubject(String token) {
+        return parseSubject(token, ACCESS_TOKEN);
+    }
 
-        String email = claims.getSubject();
-        String role = "ROLE_" + claims.get("role", String.class);
-
-        return new User(email, "*****", Collections.singleton(new SimpleGrantedAuthority(role)));
+    public String extractRefreshTokenSubject(String token) {
+        return parseSubject(token, REFRESH_TOKEN);
     }
 
     public boolean isAccessTokenValid(String token) {
@@ -68,21 +66,30 @@ public class JwtService {
 
     private boolean isTokenValid(String token, String expectedType) {
         try {
-            Claims claims = parseClaims(token);
-            Date expiration = claims.getExpiration();
-            return expectedType.equals(claims.get(TOKEN_TYPE_CLAIM, String.class))
-                    && expiration != null
-                    && expiration.after(new Date());
-        } catch (Exception e) {
+            parseSubject(token, expectedType);
+            return true;
+        } catch (JwtException | IllegalArgumentException e) {
             return false;
         }
     }
 
-    private Claims parseClaims(String token) {
-        return Jwts.parserBuilder()
+    private String parseSubject(String token, String expectedType) {
+        var parser = Jwts.parserBuilder()
                 .setSigningKey(getSigningKey())
-                .build()
-                .parseClaimsJws(token)
-                .getBody();
+                .require(TOKEN_TYPE_CLAIM, expectedType)
+                .build();
+        Claims claims;
+        try {
+            claims = parser.parseClaimsJws(token).getBody();
+        } catch (IllegalStateException e) {
+            // JJWT 0.11 throws this for non-scalar date claims such as exp: {}.
+            throw new MalformedJwtException("Invalid token claims", e);
+        }
+        String subject = claims.get(Claims.SUBJECT, String.class);
+        Date expiration = claims.getExpiration();
+        if (subject == null || subject.isBlank() || expiration == null || !expiration.after(new Date())) {
+            throw new MalformedJwtException("Token must have a subject and a future expiration");
+        }
+        return subject;
     }
 }

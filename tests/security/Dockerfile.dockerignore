@@ -1,0 +1,7 @@
+**
+!story-auth/
+!story-auth/target/
+!story-auth/target/*.jar
+!story-back/
+!story-back/target/
+!story-back/target/*.jar
