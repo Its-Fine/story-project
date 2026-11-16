@@ -1,0 +1,56 @@
+# Isolated test stack: no production volumes, fixed container names, or host database ports.
+services:
+  postgresql:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: security_test
+      POSTGRES_USER: security_test
+      POSTGRES_PASSWORD: security_test_only
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U security_test -d security_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  back:
+    build:
+      context: ../..
+      dockerfile: tests/security/Dockerfile
+      args:
+        MODULE: story-back
+    environment:
+      STORY_DATASOURCE_HOST: postgresql
+      POSTGRES_DB: security_test
+      POSTGRES_USER: security_test
+      POSTGRES_PASSWORD: security_test_only
+      STORY_JWT_SECRET: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+      STORY_ADMIN_USERNAME: security-admin@example.com
+      STORY_ADMIN_PASSWORD: Security-admin-test-123
+      STORY_MINIO_HOST: unused-minio
+      MINIO_ROOT_USER: test-access-key
+      MINIO_ROOT_PASSWORD: test-secret-key
+      MINIO_MC_BUCKET: test-bucket
+    ports: ["127.0.0.1::8000"]
+    depends_on:
+      postgresql:
+        condition: service_healthy
+
+  auth:
+    build:
+      context: ../..
+      dockerfile: tests/security/Dockerfile
+      args:
+        MODULE: story-auth
+    environment:
+      STORY_DATASOURCE_HOST: postgresql
+      POSTGRES_DB: security_test
+      POSTGRES_USER: security_test
+      POSTGRES_PASSWORD: security_test_only
+      STORY_JWT_SECRET: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+      STORY_COOKIE_SECURE: "false"
+    ports: ["127.0.0.1::8001"]
+    depends_on:
+      postgresql:
+        condition: service_healthy

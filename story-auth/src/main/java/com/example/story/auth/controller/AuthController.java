@@ -5,7 +5,6 @@ import com.example.story.auth.dto.SignupRequestDto;
 import com.example.story.auth.dto.AuthResponseDto;
 import com.example.story.auth.entity.AuthUser;
 import com.example.story.auth.repository.AuthUserRepository;
-import com.example.story.auth.security.JwtService;
 import com.example.story.auth.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -14,12 +13,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Duration;
 import java.util.Map;
-import java.util.HashMap;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -28,7 +27,6 @@ public class AuthController {
 
     private final AuthService authService;
     private final AuthUserRepository authUserRepository;
-    private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
 
     @Value("${story.cookie.secure:false}")
@@ -90,7 +88,7 @@ public class AuthController {
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<?> postRefresh(@CookieValue("refreshToken") String refreshToken) {
+    public ResponseEntity<?> postRefresh(@CookieValue(value = "refreshToken", required = false) String refreshToken) {
         try {
             AuthResponseDto result = new AuthResponseDto();
             result.setAccessToken(authService.refresh(refreshToken));
@@ -111,17 +109,19 @@ public class AuthController {
 
     @PutMapping("/reset")
     public ResponseEntity<?> putReset(
-            @RequestHeader("Authorization") String authHeader,
+            Authentication authentication,
             @RequestBody Map<String, String> body
     ) {
         try {
-            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorDto("Invalid token format"));
-            }
-            String token = authHeader.substring(7);
-            String email = jwtService.detailsFromToken(token).getUsername();
-            AuthUser user = authUserRepository.findByEmail(email)
+            AuthUser user = authUserRepository.findByEmail(authentication.getName())
                     .orElseThrow(() -> new RuntimeException("User not found"));
+            if (Boolean.TRUE.equals(user.getBanned())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorDto("User is banned"));
+            }
+            String currentPassword = body.get("current_password");
+            if (currentPassword == null || !passwordEncoder.matches(currentPassword, user.getPassword())) {
+                return ResponseEntity.badRequest().body(new ErrorDto("Wrong current password"));
+            }
             String newPassword = body.get("new_password");
             if (newPassword == null || newPassword.length() < 8) {
                 return ResponseEntity.badRequest().body(new ErrorDto("Password must be at least 8 characters"));
@@ -136,24 +136,9 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<?> getMe(@RequestHeader("Authorization") String authHeader) {
-        try {
-            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorDto("Invalid token format"));
-            }
-            String token = authHeader.substring(7);
-            var userDetails = (org.springframework.security.core.userdetails.User) authService.detailsFromToken(token);
-            String role = userDetails.getAuthorities().stream()
-                    .findFirst()
-                    .map(auth -> auth.getAuthority().replace("ROLE_", ""))
-                    .orElse("PARTICIPANT");
-            Map<String, String> response = new HashMap<>();
-            response.put("email", userDetails.getUsername());
-            response.put("role", role);
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorDto("Invalid or expired token"));
-        }
+    public ResponseEntity<?> getMe(Authentication authentication) {
+        String role = authentication.getAuthorities().iterator().next().getAuthority().substring("ROLE_".length());
+        return ResponseEntity.ok(Map.of("email", authentication.getName(), "role", role));
     }
 
     public static class ErrorDto {

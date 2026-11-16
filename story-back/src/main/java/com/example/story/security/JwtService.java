@@ -2,17 +2,15 @@ package com.example.story.security;
 
 import com.example.story.configuration.StoryProperties;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import java.security.Key;
-import java.util.Collections;
 import java.util.Date;
 
 @Service
@@ -25,20 +23,31 @@ public class JwtService {
         return Keys.hmacShaKeyFor(Decoders.BASE64.decode(storyProperties.getJwt().getSecret()));
     }
 
-    public UserDetails detailsFromToken(String token) {
-        Claims claims = Jwts.parserBuilder().setSigningKey(getSigningKey()).build().parseClaimsJws(token).getBody();
-
-        String email = claims.getSubject();
-        String role = "ROLE_" + claims.get("role", String.class);
-
-        return new User(email, "*****", Collections.singleton(new SimpleGrantedAuthority(role)));
+    public String extractAccessTokenSubject(String token) {
+        var parser = Jwts.parserBuilder()
+                .setSigningKey(getSigningKey())
+                .require("token_type", "ACCESS")
+                .build();
+        Claims claims;
+        try {
+            claims = parser.parseClaimsJws(token).getBody();
+        } catch (IllegalStateException e) {
+            // JJWT 0.11 throws this for non-scalar date claims such as exp: {}.
+            throw new MalformedJwtException("Invalid token claims", e);
+        }
+        String subject = claims.get(Claims.SUBJECT, String.class);
+        Date expiration = claims.getExpiration();
+        if (subject == null || subject.isBlank() || expiration == null || !expiration.after(new Date())) {
+            throw new MalformedJwtException("Token must have a subject and a future expiration");
+        }
+        return subject;
     }
 
     public boolean isTokenValid(String token) {
         try {
-            Claims claims = Jwts.parserBuilder().setSigningKey(getSigningKey()).build().parseClaimsJws(token).getBody();
-            return !claims.getExpiration().before(new Date());
-        } catch (Exception e) {
+            extractAccessTokenSubject(token);
+            return true;
+        } catch (JwtException | IllegalArgumentException e) {
             return false;
         }
     }
