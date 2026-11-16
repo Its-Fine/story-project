@@ -22,8 +22,6 @@ public class StoryProperties {
     private Admin admin = new Admin();
     private Minio minio = new Minio();
 
-    private Boolean closed;
-
     @Getter @Setter
     public static class Jwt {
         private String secret;
