@@ -15,7 +15,17 @@ export interface Application {
   status?: 'PENDING' | 'ACCEPTED' | 'REJECTED';
   rejectionReason?: string | null;
   linksToWorks?: string[];
+  works?: ApplicationWork[];
   members?: ApplicationMember[];
+}
+
+export interface ApplicationWork {
+  workId: number;
+  name: string;
+  fileSize: number;
+  broken: boolean;
+  rate?: number | null;
+  isRated: boolean;
 }
 
 export interface ApplicationMember {

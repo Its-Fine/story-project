@@ -457,6 +457,16 @@ export const ProfilePage = () => {
                       ))}
                     </div>
                   )}
+                  {!!application.works?.length && (
+                    <div className={css.applicationFiles}>
+                      <strong>{t('Оценки работ:')}</strong>{' '}
+                      {application.works.map(work => (
+                        <span key={work.workId}>
+                          {work.name}: {work.isRated ? `${work.rate}/100` : t('Без оценки')}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   {application.rejectionReason && <div className={css.rejectionReason}><strong>{t('Причина отказа:')}</strong> {application.rejectionReason}</div>}
                 </div>
                 {editingApplicationId === application.appId && (

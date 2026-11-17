@@ -3,6 +3,7 @@ package com.example.story.service.admin;
 import com.example.story.configuration.StoryProperties;
 import com.example.story.dto.applications.*;
 import com.example.story.entity.*;
+import com.example.story.exception.ResourceNotFoundException;
 import com.example.story.mapper.ApplicationMapper;
 import com.example.story.mapper.MemberMapper;
 import com.example.story.repository.*;
@@ -13,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.time.LocalDateTime;
 
 import static com.example.story.utilities.Helpers.getCurrentUser;
 
@@ -69,17 +71,7 @@ public class AdminApplicationsService {
 
         List<ResponseApplicationAdminDto> result = new ArrayList<>();
         for (ApplicationEntity application : applications) {
-            ResponseApplicationAdminDto dto = applicationMapper.entityToApplicationAdminDto(application);
-            dto.setWorksCount(workRepository.countByApplicationId(application.getId()));
-            dto.setContestName(application.getContestEntity().getName());
-
-            List<ResponseApplicationMemberDto> memberDtoList = new ArrayList<>();
-            for (MemberEntity member : application.getMemberEntities()) {
-                memberDtoList.add(memberMapper.entityToApplicationMemberDto(member));
-            }
-            dto.setMembers(memberDtoList);
-
-            result.add(dto);
+            result.add(buildResponse(application));
         }
         return result;
     }
@@ -90,6 +82,32 @@ public class AdminApplicationsService {
 
         ApplicationEntity application = applicationRepository.findById(appId).orElseThrow(() -> new RuntimeException("Application not found"));
 
+        return buildResponse(application);
+    }
+
+    public ResponseApplicationAdminDto updateStatus(Long appId, RequestApplicationStatusDto dto) {
+        UserEntity admin = getCurrentUser(userRepository);
+        if (!admin.getRole().equals(StoryProperties.Roles.ADMIN.toString())) {
+            throw new RuntimeException("You are not an administrator");
+        }
+
+        ApplicationEntity application = applicationRepository.findById(appId)
+                .orElseThrow(() -> new ResourceNotFoundException("Application not found"));
+
+        String rejectionReason = dto.getRejectionReason() == null ? null : dto.getRejectionReason().trim();
+        if (dto.getStatus() == ApplicationStatus.REJECTED && (rejectionReason == null || rejectionReason.isBlank())) {
+            throw new IllegalArgumentException("Rejection reason is required for rejected applications");
+        }
+
+        application.setStatus(dto.getStatus().name());
+        application.setRejectionReason(dto.getStatus() == ApplicationStatus.REJECTED ? rejectionReason : null);
+        application.setReviewedBy(admin.getEmail());
+        application.setReviewedAt(LocalDateTime.now());
+
+        return buildResponse(applicationRepository.saveAndFlush(application));
+    }
+
+    private ResponseApplicationAdminDto buildResponse(ApplicationEntity application) {
         ResponseApplicationAdminDto dto = applicationMapper.entityToApplicationAdminDto(application);
         dto.setWorksCount(workRepository.countByApplicationId(application.getId()));
         dto.setContestName(application.getContestEntity().getName());

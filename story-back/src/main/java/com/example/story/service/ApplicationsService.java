@@ -1,9 +1,11 @@
 package com.example.story.service;
 
 import com.example.story.dto.applications.*;
+import com.example.story.dto.works.ResponseWorkDto;
 import com.example.story.entity.*;
 import com.example.story.mapper.ApplicationMapper;
 import com.example.story.mapper.MemberMapper;
+import com.example.story.mapper.WorkMapper;
 import com.example.story.configuration.StoryProperties;
 import com.example.story.repository.*;
 
@@ -32,6 +34,7 @@ public class ApplicationsService {
     private final StoryProperties storyProperties;
     private final ApplicationMapper applicationMapper;
     private final MemberMapper memberMapper;
+    private final WorkMapper workMapper;
     private final MinioStorageService storageService;
     private final EventService eventService;
 
@@ -58,10 +61,13 @@ public class ApplicationsService {
         dto.setContestId(application.getContestEntity().getId());
 
         List<String> links = new ArrayList<>();
+        List<ResponseWorkDto> works = new ArrayList<>();
         for (WorkEntity work : application.getWorkEntities()) {
             links.add("/works/" + work.getId() + "/file");
+            works.add(workMapper.entityToWorkDto(work));
         }
         dto.setLinksToWorks(links);
+        dto.setWorks(works);
 
         List<ResponseApplicationMemberDto> memberDtoList = new ArrayList<>();
         for (MemberEntity member : application.getMemberEntities()) {

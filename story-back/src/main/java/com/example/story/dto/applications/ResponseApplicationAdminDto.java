@@ -18,6 +18,10 @@ public class ResponseApplicationAdminDto {
     private Integer worksCount;
     private Boolean isTeam;
     private Boolean isCurator;
+    private String status;
+    private String rejectionReason;
+    private String reviewedBy;
+    private LocalDateTime reviewedAt;
     private List<ResponseApplicationMemberDto> members;
 
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")

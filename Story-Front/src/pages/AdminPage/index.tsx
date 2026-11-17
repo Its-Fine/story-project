@@ -50,6 +50,7 @@ export const AdminPage = () => {
   const [search, setSearch] = useState('');
   const [expandedApplicationId, setExpandedApplicationId] = useState<number | null>(null);
   const [worksByApplication, setWorksByApplication] = useState<Record<number, AdminWork[]>>({});
+  const [ratingDrafts, setRatingDrafts] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -146,6 +147,44 @@ export const AdminPage = () => {
     }
   };
 
+  const changeApplicationStatus = async (
+    application: AdminApplication,
+    status: AdminApplication['status'],
+  ) => {
+    const token = getToken();
+    if (!token || busy) return;
+
+    let rejectionReason: string | undefined;
+    if (status === 'REJECTED') {
+      const reason = window.prompt(
+        t('Укажите причину отклонения'),
+        application.rejectionReason || '',
+      );
+      if (reason === null) return;
+      rejectionReason = reason.trim();
+      if (!rejectionReason) {
+        setError(t('Причина отклонения обязательна'));
+        return;
+      }
+    }
+
+    setBusy(true);
+    setError('');
+    setNotice('');
+    try {
+      const result = await adminApi.setApplicationStatus(application.appId, status, rejectionReason, token);
+      if (result.error || !result.data) {
+        throw new Error(result.error?.message || t('Не удалось изменить статус заявки'));
+      }
+      setApplications(previous => previous.map(item => item.appId === application.appId ? result.data! : item));
+      setNotice(t('Статус заявки обновлён.'));
+    } catch (actionError) {
+      setError(actionError instanceof Error ? actionError.message : t('Не удалось изменить статус заявки'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const toggleWorks = async (applicationId: number) => {
     if (expandedApplicationId === applicationId) {
       setExpandedApplicationId(null);
@@ -163,9 +202,67 @@ export const AdminPage = () => {
       if (result.error || result.status >= 400) {
         throw new Error(result.error?.message || t('Не удалось загрузить файлы'));
       }
-      setWorksByApplication(previous => ({ ...previous, [applicationId]: result.data ?? [] }));
+      const works = result.data ?? [];
+      setWorksByApplication(previous => ({ ...previous, [applicationId]: works }));
+      setRatingDrafts(previous => ({
+        ...previous,
+        ...Object.fromEntries(works.map(work => [work.workId, work.isRated ? String(work.rate) : ''])),
+      }));
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : t('Ошибка загрузки файлов'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const saveWorkRating = async (applicationId: number, work: AdminWork) => {
+    const token = getToken();
+    if (!token || busy) return;
+    const rate = Number(ratingDrafts[work.workId]);
+    if (!Number.isInteger(rate) || rate < 0 || rate > 100) {
+      setError(t('Оценка должна быть целым числом от 0 до 100'));
+      return;
+    }
+
+    setBusy(true);
+    setError('');
+    setNotice('');
+    try {
+      const result = await adminApi.setWorkRating(work.workId, rate, token);
+      if (result.error || !result.data) {
+        throw new Error(result.error?.message || t('Не удалось сохранить оценку'));
+      }
+      setWorksByApplication(previous => ({
+        ...previous,
+        [applicationId]: (previous[applicationId] ?? []).map(item => item.workId === work.workId ? result.data! : item),
+      }));
+      setNotice(t('Оценка сохранена.'));
+    } catch (actionError) {
+      setError(actionError instanceof Error ? actionError.message : t('Не удалось сохранить оценку'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const clearWorkRating = async (applicationId: number, work: AdminWork) => {
+    const token = getToken();
+    if (!token || busy) return;
+    setBusy(true);
+    setError('');
+    setNotice('');
+    try {
+      const result = await adminApi.clearWorkRating(work.workId, token);
+      if (result.error || !result.data) {
+        throw new Error(result.error?.message || t('Не удалось удалить оценку'));
+      }
+      setWorksByApplication(previous => ({
+        ...previous,
+        [applicationId]: (previous[applicationId] ?? []).map(item => item.workId === work.workId ? result.data! : item),
+      }));
+      setRatingDrafts(previous => ({ ...previous, [work.workId]: '' }));
+      setNotice(t('Оценка удалена.'));
+    } catch (actionError) {
+      setError(actionError instanceof Error ? actionError.message : t('Не удалось удалить оценку'));
     } finally {
       setBusy(false);
     }
@@ -273,7 +370,7 @@ export const AdminPage = () => {
                 ))}
               </div>
             )}
-            <p className={css.capabilityNote}>{t('Доступны просмотр заявок и работ, выгрузка Excel и управление приёмом. Оценки и смены статуса заявок в backend пока нет.')}</p>
+            <p className={css.capabilityNote}>{t('Заявки можно принимать, отклонять и возвращать на рассмотрение. Работам можно выставлять итоговую оценку от 0 до 100.')}</p>
           </section>
         )}
 
@@ -294,9 +391,14 @@ export const AdminPage = () => {
                         <h3>{application.name}</h3>
                         <span className={css.muted}>{application.contestName} · {formatDate(application.createdAt, locale)}</span>
                       </div>
-                      <button className={css.outlineButton} onClick={() => void toggleWorks(application.appId)} disabled={busy}>
-                        {expandedApplicationId === application.appId ? t('Скрыть работы') : `${t('Работы')} (${application.worksCount})`}
-                      </button>
+                      <div className={css.applicationTopActions}>
+                        <span className={`${css.statusBadge} ${css[`status${application.status}`]}`}>{t(
+                          application.status === 'ACCEPTED' ? 'Принята' : application.status === 'REJECTED' ? 'Отклонена' : 'На рассмотрении'
+                        )}</span>
+                        <button className={css.outlineButton} onClick={() => void toggleWorks(application.appId)} disabled={busy}>
+                          {expandedApplicationId === application.appId ? t('Скрыть работы') : `${t('Работы')} (${application.worksCount})`}
+                        </button>
+                      </div>
                     </div>
                     <div className={css.applicationMeta}>
                       <span>{t('Город:')} {application.city || '—'}</span>
@@ -305,6 +407,14 @@ export const AdminPage = () => {
                       {application.mentorName && <span>{t('Наставник:')} {application.mentorName}</span>}
                     </div>
                     <p className={css.description}>{application.description}</p>
+                    {application.rejectionReason && (
+                      <p className={css.rejectionReason}><strong>{t('Причина отказа:')}</strong> {application.rejectionReason}</p>
+                    )}
+                    <div className={css.moderationActions}>
+                      <button onClick={() => void changeApplicationStatus(application, 'ACCEPTED')} disabled={busy || application.status === 'ACCEPTED'}>{t('Принять')}</button>
+                      <button onClick={() => void changeApplicationStatus(application, 'REJECTED')} disabled={busy || application.status === 'REJECTED'}>{t('Отклонить')}</button>
+                      <button onClick={() => void changeApplicationStatus(application, 'PENDING')} disabled={busy || application.status === 'PENDING'}>{t('Вернуть на рассмотрение')}</button>
+                    </div>
                     {expandedApplicationId === application.appId && (
                       <div className={css.worksList}>
                         {(worksByApplication[application.appId] ?? []).length === 0 ? (
@@ -313,9 +423,23 @@ export const AdminPage = () => {
                           <div className={css.workItem} key={work.workId}>
                             <div>
                               <strong>{work.name}</strong>
-                              <span>{formatSize(work.fileSize, language)} · {work.broken ? t('Файл повреждён') : t('Доступен')}</span>
+                              <span>{formatSize(work.fileSize, language)} · {work.broken ? t('Файл повреждён') : t('Доступен')} · {work.isRated ? `${t('Оценка')}: ${work.rate}/100` : t('Без оценки')}</span>
                             </div>
-                            <button className={css.textButton} onClick={() => void downloadFile(work)} disabled={busy || work.broken}>{t('Скачать')}</button>
+                            <div className={css.workActions}>
+                              <input
+                                type="number"
+                                min="0"
+                                max="100"
+                                step="1"
+                                value={ratingDrafts[work.workId] ?? ''}
+                                onChange={event => setRatingDrafts(previous => ({ ...previous, [work.workId]: event.target.value }))}
+                                aria-label={t('Оценка от 0 до 100')}
+                                disabled={busy || work.broken}
+                              />
+                              <button className={css.textButton} onClick={() => void saveWorkRating(application.appId, work)} disabled={busy || work.broken}>{t('Сохранить оценку')}</button>
+                              {work.isRated && <button className={css.textButton} onClick={() => void clearWorkRating(application.appId, work)} disabled={busy}>{t('Снять оценку')}</button>}
+                              <button className={css.textButton} onClick={() => void downloadFile(work)} disabled={busy || work.broken}>{t('Скачать')}</button>
+                            </div>
                           </div>
                         ))}
                       </div>

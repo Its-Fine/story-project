@@ -24,6 +24,10 @@ export interface AdminApplication {
   worksCount: number;
   isTeam: boolean;
   isCurator: boolean;
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+  rejectionReason?: string | null;
+  reviewedBy?: string | null;
+  reviewedAt?: string | null;
   createdAt: string;
 }
 
@@ -32,6 +36,10 @@ export interface AdminWork {
   name: string;
   fileSize: number;
   broken: boolean;
+  rate?: number | null;
+  isRated: boolean;
+  ratedBy?: string | null;
+  ratedAt?: string | null;
   createdAt: string;
 }
 
@@ -63,6 +71,33 @@ export const adminApi = {
     apiClient<AdminWork[]>({
       api: `/admin/works?appId=${appId}`,
       method: 'GET',
+      token,
+    }),
+
+  setApplicationStatus: (
+    appId: number,
+    status: AdminApplication['status'],
+    rejectionReason: string | undefined,
+    token: string,
+  ) => apiClient<AdminApplication>({
+    api: `/admin/applications/${appId}/status`,
+    method: 'PATCH',
+    values: { status, rejectionReason },
+    token,
+  }),
+
+  setWorkRating: (workId: number, rate: number, token: string) =>
+    apiClient<AdminWork>({
+      api: `/admin/works/${workId}/rating`,
+      method: 'PUT',
+      values: { rate },
+      token,
+    }),
+
+  clearWorkRating: (workId: number, token: string) =>
+    apiClient<AdminWork>({
+      api: `/admin/works/${workId}/rating`,
+      method: 'DELETE',
       token,
     }),
 

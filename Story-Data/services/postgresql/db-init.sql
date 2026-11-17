@@ -102,6 +102,17 @@ CREATE TABLE IF NOT EXISTS event_settings (
 INSERT INTO event_settings (id, applications_closed)
 VALUES (1, FALSE)
 ON CONFLICT (id) DO NOTHING;
+
+-- Moderation audit and optimistic locking for existing installations.
+ALTER TABLE applications
+    ADD COLUMN IF NOT EXISTS reviewed_by VARCHAR(255),
+    ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMP,
+    ADD COLUMN IF NOT EXISTS version BIGINT NOT NULL DEFAULT 0;
+
+ALTER TABLE works
+    ADD COLUMN IF NOT EXISTS rated_by VARCHAR(255),
+    ADD COLUMN IF NOT EXISTS rated_at TIMESTAMP,
+    ADD COLUMN IF NOT EXISTS version BIGINT NOT NULL DEFAULT 0;
 -- init.sql
 -- Создание таблиц для JPA сущностей
 

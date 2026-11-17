@@ -16,12 +16,18 @@ public interface ApplicationMapper {
     @Mapping(target = "memberEntities", ignore = true)
     @Mapping(target = "mentor", source = "mentorName")
     @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "status", ignore = true)
+    @Mapping(target = "rejectionReason", ignore = true)
+    @Mapping(target = "reviewedBy", ignore = true)
+    @Mapping(target = "reviewedAt", ignore = true)
+    @Mapping(target = "version", ignore = true)
     ApplicationEntity entityFromApplicationDto(RequestApplicationDto dto);
 
     @Mapping(target = "worksCount", ignore = true)
     @Mapping(target = "contestName", ignore = true)
     @Mapping(target = "contestId", ignore = true)
     @Mapping(target = "linksToWorks", ignore = true)
+    @Mapping(target = "works", ignore = true)
     @Mapping(target = "mentorName", source = "mentor")
     @Mapping(target = "members", ignore = true)
     @Mapping(target = "appId", source = "id")
