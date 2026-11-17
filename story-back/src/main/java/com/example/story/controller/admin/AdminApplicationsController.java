@@ -1,6 +1,8 @@
 package com.example.story.controller.admin;
 
 import com.example.story.dto.errors.ResponseErrorDto;
+import com.example.story.dto.applications.RequestApplicationStatusDto;
+import com.example.story.exception.ResourceNotFoundException;
 import com.example.story.service.admin.AdminApplicationsService;
 
 import lombok.RequiredArgsConstructor;
@@ -8,6 +10,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 
 @RestController
 @PreAuthorize("hasRole('ADMIN')")
@@ -43,6 +47,21 @@ public class AdminApplicationsController {
     {
         try {
             return ResponseEntity.ok().body(adminApplicationService.obtainByAppId(appId));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ResponseErrorDto(e.getMessage()));
+        }
+    }
+
+    @PatchMapping("/{appId}/status")
+    public ResponseEntity<?> updateStatus(@PathVariable Long appId,
+                                          @RequestBody @Validated RequestApplicationStatusDto dto) {
+        try {
+            return ResponseEntity.ok(adminApplicationService.updateStatus(appId, dto));
+        } catch (ObjectOptimisticLockingFailureException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(new ResponseErrorDto("Application was changed by another administrator"));
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ResponseErrorDto(e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ResponseErrorDto(e.getMessage()));
         }

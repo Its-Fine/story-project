@@ -8,4 +8,6 @@ public class ResponseWorkDto {
     private String name;
     private Integer fileSize;
     private Boolean broken;
+    private Integer rate;
+    private Boolean isRated;
 }

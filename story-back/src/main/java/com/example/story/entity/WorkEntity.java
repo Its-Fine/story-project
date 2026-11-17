@@ -27,6 +27,16 @@ public class WorkEntity {
     @Column(name = "is_rated", nullable = false)
     private Boolean isRated = false;
 
+    @Column(name = "rated_by")
+    private String ratedBy;
+
+    @Column(name = "rated_at")
+    private LocalDateTime ratedAt;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version = 0L;
+
     @Column(name = "file_size", nullable = false)
     private Integer fileSize;
 

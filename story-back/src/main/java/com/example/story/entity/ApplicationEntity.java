@@ -43,6 +43,16 @@ public class ApplicationEntity {
     @Column(name = "rejection_reason", columnDefinition = "TEXT")
     private String rejectionReason = null;
 
+    @Column(name = "reviewed_by")
+    private String reviewedBy;
+
+    @Column(name = "reviewed_at")
+    private LocalDateTime reviewedAt;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version = 0L;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

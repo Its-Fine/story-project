@@ -3,6 +3,7 @@ package com.example.story.dto.applications;
 import lombok.Data;
 
 import java.util.List;
+import com.example.story.dto.works.ResponseWorkDto;
 
 @Data
 public class ResponseApplicationDto {
@@ -20,5 +21,6 @@ public class ResponseApplicationDto {
     private String status;
     private String rejectionReason;
     private List<String> linksToWorks;
+    private List<ResponseWorkDto> works;
     private List<ResponseApplicationMemberDto> members;
 }

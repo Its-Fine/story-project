@@ -2,6 +2,8 @@ package com.example.story.controller.admin;
 
 import com.example.story.dto.errors.ResponseErrorDto;
 import com.example.story.dto.storage.LoadedFile;
+import com.example.story.dto.works.RequestWorkRatingDto;
+import com.example.story.exception.ResourceNotFoundException;
 import com.example.story.service.admin.AdminWorksService;
 
 import lombok.RequiredArgsConstructor;
@@ -10,6 +12,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 
 @RestController
 @PreAuthorize("hasRole('ADMIN')")
@@ -42,6 +46,35 @@ public class AdminWorksController {
         try {
             LoadedFile file = adminWorksService.obtainData(workId);
             return ResponseEntity.ok().contentType(MediaType.parseMediaType(file.getContentType())).body(file.getFileData());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ResponseErrorDto(e.getMessage()));
+        }
+    }
+
+    @PutMapping("/{workId}/rating")
+    public ResponseEntity<?> putRating(@PathVariable Long workId,
+                                       @RequestBody @Validated RequestWorkRatingDto dto) {
+        try {
+            return ResponseEntity.ok(adminWorksService.updateRating(workId, dto));
+        } catch (ObjectOptimisticLockingFailureException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(new ResponseErrorDto("Work was changed by another administrator"));
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ResponseErrorDto(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ResponseErrorDto(e.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/{workId}/rating")
+    public ResponseEntity<?> deleteRating(@PathVariable Long workId) {
+        try {
+            return ResponseEntity.ok(adminWorksService.clearRating(workId));
+        } catch (ObjectOptimisticLockingFailureException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(new ResponseErrorDto("Work was changed by another administrator"));
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ResponseErrorDto(e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ResponseErrorDto(e.getMessage()));
         }
