@@ -281,6 +281,54 @@
   }
 }
 
+.applicationTopActions,
+.moderationActions,
+.workActions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.statusBadge {
+  padding: 5px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.statusPENDING { background: #fff5d9; color: #846300; }
+.statusACCEPTED { background: #e9f7ee; color: #237a45; }
+.statusREJECTED { background: #fff0f1; color: #a50e1c; }
+
+.moderationActions {
+  margin-top: 12px;
+
+  button {
+    padding: 7px 10px;
+    border: 1px solid #e5e5e8;
+    border-radius: 8px;
+    background: #ffffff;
+    color: $secondary;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+
+    &:hover:not(:disabled) { border-color: $primary; color: $primary; }
+    &:disabled { opacity: 0.45; cursor: not-allowed; }
+  }
+}
+
+.rejectionReason {
+  padding: 9px 11px;
+  margin-top: 10px;
+  border-radius: 8px;
+  background: #fff4f5;
+  color: #8d1721;
+  font-size: 12px;
+}
+
 .muted {
   display: inline-block;
   margin-top: 4px;
@@ -358,6 +406,19 @@
   span {
     color: $text-light;
     font-size: 11px;
+  }
+}
+
+.workActions {
+  justify-content: flex-end;
+
+  input {
+    width: 74px;
+    padding: 7px 8px;
+    border: 1px solid $border;
+    border-radius: 8px;
+    font: inherit;
+    font-size: 12px;
   }
 }
 
