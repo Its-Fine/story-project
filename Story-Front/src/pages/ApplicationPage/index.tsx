@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { DecorLines } from '../../components/Layout/DecorLines';
 import { Notification } from '../../components/UI/Notification';
@@ -12,27 +12,55 @@ interface Nomination {
   name: string;
 }
 
+const createEmptyFormData = () => ({
+  firstName: '',
+  lastName: '',
+  email: '',
+  birthDate: '',
+  city: '',
+  organization: '',
+  nomination: '',
+  workTitle: '',
+  description: '',
+  mentorName: ''
+});
+
+type ApplicationFormData = ReturnType<typeof createEmptyFormData>;
+type ApplicationMemberDraft = { firstName: string; lastName: string; birthDate: string };
+
+interface StoredApplicationDraft {
+  formData: ApplicationFormData;
+  isTeam: boolean;
+  isCurator: boolean;
+  members: ApplicationMemberDraft[];
+}
+
+const getDraftOwner = () => {
+  const token = localStorage.getItem('token');
+  if (!token) return 'anonymous';
+
+  try {
+    const payload = token.split('.')[1];
+    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+    return JSON.parse(atob(padded)).sub || 'unknown';
+  } catch {
+    return 'unknown';
+  }
+};
+
 export const ApplicationPage = () => {
   const { contestId } = useParams<{ contestId: string }>();
   const navigate = useNavigate();
   const { t, language } = useLanguage();
+  const draftStorageKey = `story-application-draft:${getDraftOwner()}:${contestId || 'default'}`;
 
-  const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    birthDate: '',
-    city: '',
-    organization: '',
-    nomination: '',
-    workTitle: '',
-    description: '',
-    mentorName: ''
-  });
+  const [formData, setFormData] = useState(createEmptyFormData);
 
   const [isTeam, setIsTeam] = useState(false);
   const [isCurator, setIsCurator] = useState(false);
-  const [members, setMembers] = useState<Array<{ firstName: string; lastName: string; birthDate: string }>>([]);
+  const [members, setMembers] = useState<ApplicationMemberDraft[]>([]);
+  const [draftLoaded, setDraftLoaded] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
@@ -54,7 +82,7 @@ export const ApplicationPage = () => {
     }
   }, [navigate]);
 
-  const nominationsByAge = {
+  const nominationsByAge = useMemo(() => ({
     junior: {
       min: 10, max: 13,
       list: [
@@ -88,11 +116,11 @@ export const ApplicationPage = () => {
         { id: 18, name: 'Промышленный дизайн (эскизы, макеты, действующие прототипы промышленных изделий: техника, оборудование, предметы интерьера и городской среды, игрушки, ювелирные изделия, сувенирная продукция и др.)' }
       ]
     }
-  };
+  }), []);
 
   const [availableNominations, setAvailableNominations] = useState<Nomination[]>([]);
 
-  const calculateAge = (birthDate: string): number => {
+  const calculateAge = useCallback((birthDate: string): number => {
     const birth = new Date(birthDate);
     const today = new Date();
     let age = today.getFullYear() - birth.getFullYear();
@@ -101,7 +129,7 @@ export const ApplicationPage = () => {
       age--;
     }
     return age;
-  };
+  }, []);
 
   const validateEmail = (email: string): boolean => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
@@ -131,7 +159,7 @@ export const ApplicationPage = () => {
     }
   };
 
-  const updateNominationsByBirthDate = (birthDate: string) => {
+  const updateNominationsByBirthDate = useCallback((birthDate: string) => {
     if (!birthDate) {
       setAvailableNominations([]);
       return;
@@ -145,7 +173,54 @@ export const ApplicationPage = () => {
           ? nominationsByAge.senior
           : null;
     setAvailableNominations(group ? group.list : []);
-  };
+  }, [calculateAge, nominationsByAge]);
+
+  useEffect(() => {
+    setDraftLoaded(false);
+    try {
+      const savedDraft = localStorage.getItem(draftStorageKey);
+      if (!savedDraft) return;
+
+      const draft = JSON.parse(savedDraft) as StoredApplicationDraft;
+      if (!draft.formData) return;
+
+      setFormData({ ...createEmptyFormData(), ...draft.formData });
+      setIsTeam(Boolean(draft.isTeam));
+      setIsCurator(Boolean(draft.isCurator));
+      setMembers(Array.isArray(draft.members) ? draft.members : []);
+
+      const nominationBirthDate = draft.isCurator
+        ? draft.members?.[0]?.birthDate || ''
+        : draft.formData.birthDate;
+      updateNominationsByBirthDate(nominationBirthDate);
+
+      const hasContent = Object.values(draft.formData).some(Boolean) || Boolean(draft.members?.length);
+      if (hasContent) {
+        setNotification({
+          show: true,
+          message: t('Черновик восстановлен. Файлы нужно прикрепить заново.'),
+          type: 'success'
+        });
+      }
+    } catch {
+      localStorage.removeItem(draftStorageKey);
+    } finally {
+      setDraftLoaded(true);
+    }
+  }, [draftStorageKey, t, updateNominationsByBirthDate]);
+
+  useEffect(() => {
+    if (!draftLoaded) return;
+
+    const hasContent = Object.values(formData).some(Boolean) || members.length > 0 || isTeam || isCurator;
+    if (!hasContent) {
+      localStorage.removeItem(draftStorageKey);
+      return;
+    }
+
+    const draft: StoredApplicationDraft = { formData, isTeam, isCurator, members };
+    localStorage.setItem(draftStorageKey, JSON.stringify(draft));
+  }, [draftLoaded, draftStorageKey, formData, isCurator, isTeam, members]);
 
   const handleBirthDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const date = e.target.value;
@@ -312,7 +387,10 @@ export const ApplicationPage = () => {
 
     const appId = response.data?.appId;
     if (response.status !== 201 || !appId) {
-      showNotification(response.error?.message || t('Не удалось создать заявку'), 'error');
+      const message = response.status === 410
+        ? t('Приём заявок закрыт. Новые заявки временно не принимаются.')
+        : response.error?.message || t('Не удалось создать заявку');
+      showNotification(message, 'error');
       return;
     }
 
@@ -325,22 +403,13 @@ export const ApplicationPage = () => {
     }
 
     showNotification(t('Заявка отправлена!'), 'success');
+    localStorage.removeItem(draftStorageKey);
     setTimeout(() => navigate('/profile'), 1500);
   };
 
   const handleClear = () => {
-    setFormData({
-      firstName: '',
-      lastName: '',
-      email: '',
-      birthDate: '',
-      city: '',
-      organization: '',
-      nomination: '',
-      workTitle: '',
-      description: '',
-      mentorName: ''
-    });
+    localStorage.removeItem(draftStorageKey);
+    setFormData(createEmptyFormData());
     setUploadedFiles([]);
     setErrors({});
     setAvailableNominations([]);

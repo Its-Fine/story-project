@@ -144,6 +144,7 @@ class StoryApplicationTests {
                                   "isCurator": false
                                 }
                                 """))
-                .andExpect(status().isGone());
+                .andExpect(status().isGone())
+                .andExpect(jsonPath("$.message").value("Приём заявок закрыт. Новые заявки временно не принимаются."));
     }
 }

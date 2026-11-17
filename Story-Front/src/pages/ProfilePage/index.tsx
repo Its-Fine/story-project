@@ -21,6 +21,7 @@ export const ProfilePage = () => {
   const [filter, setFilter] = useState('');
   const [error, setError] = useState('');
   const [isEditing, setIsEditing] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [passwordDraft, setPasswordDraft] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [savingPassword, setSavingPassword] = useState(false);
@@ -172,6 +173,7 @@ export const ProfilePage = () => {
       }
       setPasswordDraft({ currentPassword: '', newPassword: '', confirmPassword: '' });
       setPasswordMessage(t('Пароль успешно изменён'));
+      setIsChangingPassword(false);
     } catch (passwordError) {
       setError(passwordError instanceof Error ? passwordError.message : t('Не удалось изменить пароль'));
     } finally {
@@ -183,7 +185,21 @@ export const ProfilePage = () => {
     if (!account) return;
     setProfileDraft({ firstName: account.firstName ?? '', lastName: account.lastName ?? '' });
     setError('');
+    setIsChangingPassword(false);
     setIsEditing(true);
+  };
+
+  const handleStartPasswordChange = () => {
+    setIsEditing(false);
+    setError('');
+    setPasswordMessage('');
+    setIsChangingPassword(true);
+  };
+
+  const handleCancelPasswordChange = () => {
+    setPasswordDraft({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    setIsChangingPassword(false);
+    setError('');
   };
 
   const handleCancelEdit = () => {
@@ -257,7 +273,9 @@ export const ProfilePage = () => {
       }, token);
 
       if (response.status !== 204 && response.status !== 200) {
-        throw new Error(response.error?.message || t('Не удалось обновить заявку'));
+        throw new Error(response.status === 410
+          ? t('Приём заявок закрыт. Редактирование заявок временно недоступно.')
+          : response.error?.message || t('Не удалось обновить заявку'));
       }
 
       setEditingApplicationId(null);
@@ -328,7 +346,38 @@ export const ProfilePage = () => {
         </section>
 
         <section className={css.profileSummary}>
-          {isEditing ? (
+          {isChangingPassword ? (
+            <div className={css.passwordEditor}>
+              <h2>{t('Изменение пароля')}</h2>
+              <form onSubmit={handleChangePassword}>
+                <div className={css.profileFields}>
+                  <label>
+                    <span>{t('Текущий пароль')}</span>
+                    <input type="password" autoComplete="current-password" value={passwordDraft.currentPassword}
+                      onChange={event => setPasswordDraft(previous => ({ ...previous, currentPassword: event.target.value }))} required />
+                  </label>
+                  <label>
+                    <span>{t('Новый пароль')}</span>
+                    <input type="password" autoComplete="new-password" minLength={8} maxLength={255}
+                      value={passwordDraft.newPassword}
+                      onChange={event => setPasswordDraft(previous => ({ ...previous, newPassword: event.target.value }))} required />
+                  </label>
+                  <label>
+                    <span>{t('Повторите новый пароль')}</span>
+                    <input type="password" autoComplete="new-password" minLength={8} maxLength={255}
+                      value={passwordDraft.confirmPassword}
+                      onChange={event => setPasswordDraft(previous => ({ ...previous, confirmPassword: event.target.value }))} required />
+                  </label>
+                </div>
+                <div className={css.profileEditActions}>
+                  <Button type="submit" variant="primary" disabled={savingPassword}>
+                    {savingPassword ? t('Сохранение...') : t('Изменить пароль')}
+                  </Button>
+                  <Button type="button" variant="secondary" onClick={handleCancelPasswordChange} disabled={savingPassword}>{t('Отмена')}</Button>
+                </div>
+              </form>
+            </div>
+          ) : isEditing ? (
             <form className={css.profileEditForm} onSubmit={handleSaveProfile}>
               <div className={css.profileFields}>
                 <label>
@@ -351,42 +400,15 @@ export const ProfilePage = () => {
                 <strong>{t('Пользователь')}: {account ? `${account.firstName} ${account.lastName}`.trim() : '—'}</strong>
                 <span>{t('Email')}: {account?.email ?? '—'}</span>
               </div>
-              <Button variant="secondary" onClick={handleEditProfile} disabled={!account}>{t('Редактировать профиль')}</Button>
+              <div className={css.profileEditActions}>
+                <Button variant="secondary" onClick={handleEditProfile} disabled={!account}>{t('Редактировать профиль')}</Button>
+                <Button variant="secondary" onClick={handleStartPasswordChange}>{t('Изменить пароль')}</Button>
+              </div>
             </>
           )}
         </section>
 
-        <section className={css.passwordSection}>
-          <h2>{t('Изменение пароля')}</h2>
-          <form onSubmit={handleChangePassword}>
-            <div className={css.profileFields}>
-              <label>
-                <span>{t('Текущий пароль')}</span>
-                <input type="password" autoComplete="current-password" value={passwordDraft.currentPassword}
-                  onChange={event => setPasswordDraft(previous => ({ ...previous, currentPassword: event.target.value }))} required />
-              </label>
-              <label>
-                <span>{t('Новый пароль')}</span>
-                <input type="password" autoComplete="new-password" minLength={8} maxLength={255}
-                  value={passwordDraft.newPassword}
-                  onChange={event => setPasswordDraft(previous => ({ ...previous, newPassword: event.target.value }))} required />
-              </label>
-              <label>
-                <span>{t('Повторите новый пароль')}</span>
-                <input type="password" autoComplete="new-password" minLength={8} maxLength={255}
-                  value={passwordDraft.confirmPassword}
-                  onChange={event => setPasswordDraft(previous => ({ ...previous, confirmPassword: event.target.value }))} required />
-              </label>
-            </div>
-            <div className={css.profileEditActions}>
-              <Button type="submit" variant="primary" disabled={savingPassword}>
-                {savingPassword ? t('Сохранение...') : t('Изменить пароль')}
-              </Button>
-            </div>
-          </form>
-          {passwordMessage && <div className={css.successMessage} role="status">{passwordMessage}</div>}
-        </section>
-
+        {passwordMessage && <div className={css.successMessage} role="status">{passwordMessage}</div>}
         {error && <div className={css.errorMessage} role="alert">{error}</div>}
 
         {role === 'PARTICIPANT' && (

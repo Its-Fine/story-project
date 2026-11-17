@@ -462,8 +462,39 @@
   }
 }
 
+.passwordEditor {
+  width: 100%;
+
+  h2 {
+    margin: 0 0 16px;
+    color: $secondary;
+    font-size: 17px;
+  }
+
+  form {
+    display: flex;
+    align-items: flex-end;
+    gap: 16px;
+  }
+
+  .profileFields {
+    margin: 0;
+  }
+
+  @media (max-width: $breakpoint-mobile) {
+    form {
+      align-items: stretch;
+      flex-direction: column;
+    }
+  }
+}
+
 .successMessage {
-  margin-top: 12px;
+  margin: -10px 0 18px;
+  padding: 10px 13px;
+  border: 1px solid #bfe3cd;
+  border-radius: 9px;
+  background: #f1faf4;
   color: #237a45;
   font-size: 13px;
 }

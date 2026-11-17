@@ -46,6 +46,12 @@
   font-size: 14px;
 }
 
+.heroActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .stats {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -441,6 +447,11 @@
     align-items: flex-start;
     flex-direction: column;
     padding: 22px;
+  }
+
+  .heroActions {
+    width: 100%;
+    flex-wrap: wrap;
   }
 
   .stats {
