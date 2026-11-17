@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { DecorLines } from '../../components/Layout/DecorLines';
 import { Notification } from '../../components/UI/Notification';
@@ -82,7 +82,7 @@ export const ApplicationPage = () => {
     }
   }, [navigate]);
 
-  const nominationsByAge = {
+  const nominationsByAge = useMemo(() => ({
     junior: {
       min: 10, max: 13,
       list: [
@@ -116,11 +116,11 @@ export const ApplicationPage = () => {
         { id: 18, name: 'Промышленный дизайн (эскизы, макеты, действующие прототипы промышленных изделий: техника, оборудование, предметы интерьера и городской среды, игрушки, ювелирные изделия, сувенирная продукция и др.)' }
       ]
     }
-  };
+  }), []);
 
   const [availableNominations, setAvailableNominations] = useState<Nomination[]>([]);
 
-  const calculateAge = (birthDate: string): number => {
+  const calculateAge = useCallback((birthDate: string): number => {
     const birth = new Date(birthDate);
     const today = new Date();
     let age = today.getFullYear() - birth.getFullYear();
@@ -129,7 +129,7 @@ export const ApplicationPage = () => {
       age--;
     }
     return age;
-  };
+  }, []);
 
   const validateEmail = (email: string): boolean => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
@@ -159,7 +159,7 @@ export const ApplicationPage = () => {
     }
   };
 
-  const updateNominationsByBirthDate = (birthDate: string) => {
+  const updateNominationsByBirthDate = useCallback((birthDate: string) => {
     if (!birthDate) {
       setAvailableNominations([]);
       return;
@@ -173,7 +173,7 @@ export const ApplicationPage = () => {
           ? nominationsByAge.senior
           : null;
     setAvailableNominations(group ? group.list : []);
-  };
+  }, [calculateAge, nominationsByAge]);
 
   useEffect(() => {
     setDraftLoaded(false);
@@ -207,7 +207,7 @@ export const ApplicationPage = () => {
     } finally {
       setDraftLoaded(true);
     }
-  }, [draftStorageKey]);
+  }, [draftStorageKey, t, updateNominationsByBirthDate]);
 
   useEffect(() => {
     if (!draftLoaded) return;
