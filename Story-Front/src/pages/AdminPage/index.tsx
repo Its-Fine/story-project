@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DecorLines } from '../../components/Layout/DecorLines';
 import { Button } from '../../components/UI/Button';
+import { Notification } from '../../components/UI/Notification';
 import { adminApi, AdminApplication, AdminUser, AdminWork } from '../../api/admin';
 import { authApi } from '../../api/auth';
 import { getRoleLabel } from '../../utils/roleLabels';
@@ -319,8 +320,6 @@ export const AdminPage = () => {
         </section>
 
         {error && <div className={css.error} role="alert">{error}</div>}
-        {notice && <div className={css.notice} role="status">{notice}</div>}
-
         <section className={css.stats} aria-label={t('Сводка')}>
           <article className={css.statCard}>
             <span className={css.statLabel}>{t('Пользователи')}</span>
@@ -482,6 +481,12 @@ export const AdminPage = () => {
           </section>
         )}
       </main>
+      <Notification
+        message={notice}
+        type="success"
+        isVisible={Boolean(notice)}
+        onClose={() => setNotice('')}
+      />
     </>
   );
 };

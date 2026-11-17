@@ -474,8 +474,7 @@
   text-align: center;
 }
 
-.error,
-.notice {
+.error {
   padding: 12px 16px;
   margin-bottom: 14px;
   border-radius: 10px;
@@ -485,11 +484,6 @@
 .error {
   background: #fff0f1;
   color: #a50e1c;
-}
-
-.notice {
-  background: #edf8f1;
-  color: #226b40;
 }
 
 @media (max-width: $breakpoint-tablet) {
