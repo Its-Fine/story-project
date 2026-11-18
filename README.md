@@ -40,10 +40,11 @@ mvn -pl story-back -am verify
 
 ### 1. Подготовьте настройки
 
-Откройте PowerShell в корневой папке репозитория. Если файла `Story-Data/.env` ещё нет, создайте его из примера:
+Откройте PowerShell в корневой папке репозитория. Для локальной разработки
+создайте `Story-Data/.env` из локального примера:
 
 ```powershell
-Copy-Item .\Story-Data\.env.example .\Story-Data\.env
+Copy-Item .\Story-Data\.env.local.example .\Story-Data\.env
 ```
 
 Сгенерируйте Base64-секрет для JWT:
@@ -52,9 +53,13 @@ Copy-Item .\Story-Data\.env.example .\Story-Data\.env
 [Convert]::ToBase64String([byte[]](1..48 | ForEach-Object { Get-Random -Maximum 256 }))
 ```
 
-Откройте `Story-Data/.env` и вставьте полученную строку в `STORY_JWT_SECRET`. Также задайте свой пароль в `STORY_ADMIN_PASSWORD`. Для локального запуска оставьте `STORY_COOKIE_SECURE=false`.
+Откройте `Story-Data/.env`, замените локальные пароли и вставьте полученную строку
+в `STORY_JWT_SECRET`. Для localhost оставьте `STORY_COOKIE_SECURE=false`,
+`STORY_COOKIE_SAME_SITE=Lax` и точный Origin `http://localhost:3000`.
 
-> Не публикуйте `.env` и не используйте демонстрационные пароли в доступной из интернета среде. Для production нужны собственные секреты и HTTPS.
+> Не публикуйте `.env` и не используйте локальный пример в доступной из интернета
+> среде. Production-шаблон `Story-Data/.env.example` намеренно не содержит
+> секретов и требует HTTPS. Подробности: [безопасная конфигурация](docs/configuration.md).
 
 ### 2. Соберите и запустите приложение
 
@@ -79,7 +84,9 @@ docker compose up -d --build
 
 ### 4. Войдите или зарегистрируйтесь
 
-- Администратор при первом запуске создаётся из `STORY_ADMIN_USERNAME` и `STORY_ADMIN_PASSWORD` в `.env`. В примере это `admin@example.com`; используйте пароль, который сами указали.
+- Администратор не создаётся автоматически при каждом запуске. Для первого
+  создания выполните явную одноразовую bootstrap-команду из
+  [инструкции по конфигурации](docs/configuration.md), затем снова отключите флаг.
 - Обычный участник регистрируется на главной странице, затем входит с теми же данными. Новые регистрации получают роль `PARTICIPANT`.
 - При регистрации укажите корректный email; минимальная длина пароля на сервере — 8 символов.
 

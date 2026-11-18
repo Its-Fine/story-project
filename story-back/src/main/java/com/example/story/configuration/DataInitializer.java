@@ -7,14 +7,21 @@ import com.example.story.repository.ContestRepository;
 import com.example.story.repository.EventSettingsRepository;
 import com.example.story.repository.UserRepository;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.ResourceLoader;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
+import java.io.IOException;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -22,6 +29,7 @@ import java.util.Optional;
 @Component
 @RequiredArgsConstructor
 @DependsOn("entityManagerFactory")
+@Slf4j
 public class DataInitializer implements ApplicationRunner {
 
     private final UserRepository userRepository;
@@ -29,24 +37,37 @@ public class DataInitializer implements ApplicationRunner {
     private final EventSettingsRepository eventSettingsRepository;
     private final StoryProperties storyProperties;
     private final PasswordEncoder passwordEncoder;
+    private final ObjectMapper objectMapper;
+    private final ResourceLoader resourceLoader;
 
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
-        createAdminIfNotExists();
-        fillContestsIfNotExist();
         createEventSettingsIfNotExists();
+        if (storyProperties.getBootstrap().isAdminEnabled()) {
+            createAdminIfNotExists();
+        }
+        if (storyProperties.getBootstrap().isContestsEnabled()) {
+            importContests();
+        }
     }
 
     private void createAdminIfNotExists() {
-        boolean adminExists = userRepository.findByEmail(storyProperties.getAdmin().getEmail()).isPresent();
+        String email = storyProperties.getAdmin().getEmail();
+        String password = storyProperties.getAdmin().getPassword();
+        if (!StringUtils.hasText(email) || !email.contains("@")) {
+            throw new IllegalStateException("STORY_ADMIN_USERNAME must contain a valid email when admin bootstrap is enabled");
+        }
+        if (!StringUtils.hasText(password) || password.length() < 12) {
+            throw new IllegalStateException("STORY_ADMIN_PASSWORD must contain at least 12 characters when admin bootstrap is enabled");
+        }
+
+        boolean adminExists = userRepository.findByEmail(email).isPresent();
 
         if (!adminExists) {
-            System.out.println("Creating default admin user...");
-
             UserEntity admin = new UserEntity();
-            admin.setEmail(storyProperties.getAdmin().getEmail());
-            admin.setPassword(passwordEncoder.encode(storyProperties.getAdmin().getPassword()));
+            admin.setEmail(email);
+            admin.setPassword(passwordEncoder.encode(password));
             admin.setRole(StoryProperties.Roles.ADMIN.toString());
             admin.setClosedAccess(true);
             admin.setBanned(false);
@@ -57,10 +78,9 @@ public class DataInitializer implements ApplicationRunner {
             admin.setParentConsent(true);
 
             userRepository.save(admin);
-            System.out.println("Admin user created successfully with email: " + storyProperties.getAdmin().getEmail());
-        }
-        else {
-            System.out.println("Admin user already exists, skipping creation");
+            log.info("Initial administrator created for configured email");
+        } else {
+            log.info("Initial administrator already exists; profile, role and password were not changed");
         }
     }
 
@@ -75,42 +95,28 @@ public class DataInitializer implements ApplicationRunner {
         eventSettingsRepository.save(settings);
     }
 
-    private void fillContestsIfNotExist() {
-        List<TempContest> newContests = List.of(
-                new TempContest("Дизайн костюма", "Коллекции авторской одежды эскизы, макеты и/или готовые изделия одежды, обуви, аксессуаров", 14, 100),
-                new TempContest("Графический дизайн", "Плакат, календарь, открытка, упаковка и др.", 10, 100),
-                new TempContest("Иллюстрация", "Авторская графика, выполненная различными художественными материалами", 10, 100),
-                new TempContest("Арт-дизайн", "Проекты, соединяющие в себе принципы дизайн-проектирования и традиционного художественного творчества", 10, 100),
-                new TempContest("Декоративно-прикладное искусство", "Сохранение народных традиций, творческое осмысление, поиск современных форм и их интерпретация", 35, 100),
-                new TempContest("Туристический сувенир", "Современное прочтение традиционных ремесел и народных промыслов в сувенирной продукции", 10, 100),
-                new TempContest("Диджитал-арт и цифровая живопись", "Художественно-графические произведения, выполненные с помощью компьютерных технологий и специализированного программного обеспечения", 18, 100),
-                new TempContest("Промышленный дизайн", "Эскизы, макеты, действующие прототипы промышленных изделий: техника, оборудование, предметы интерьера и городской среды, игрушки, ювелирные изделия, сувенирная продукция и др.", 18, 100)
-        );
+    private void importContests() {
+        Resource resource = resourceLoader.getResource(storyProperties.getBootstrap().getContestsResource());
+        List<ContestSeed> newContests;
+        try (var inputStream = resource.getInputStream()) {
+            newContests = objectMapper.readValue(inputStream, new TypeReference<>() {});
+        } catch (IOException exception) {
+            throw new IllegalStateException("Could not read contest bootstrap resource", exception);
+        }
 
-        for (TempContest newContest : newContests) {
-            Optional<ContestEntity> entity = contestRepository.findByName(newContest.name);
+        for (ContestSeed newContest : newContests) {
+            Optional<ContestEntity> entity = contestRepository.findByName(newContest.name());
             if (entity.isEmpty()) {
                 ContestEntity newEntity = new ContestEntity();
-                newEntity.setName(newContest.name);
-                newEntity.setDescription(newContest.description);
-                newEntity.setStartAge(newContest.startAge);
-                newEntity.setEndAge(newContest.endAge);
+                newEntity.setName(newContest.name());
+                newEntity.setDescription(newContest.description());
+                newEntity.setStartAge(newContest.startAge());
+                newEntity.setEndAge(newContest.endAge());
                 contestRepository.save(newEntity);
             }
         }
+        log.info("Explicit contest bootstrap completed from configured resource");
     }
 
-    private static class TempContest {
-        public String name;
-        public String description;
-        public Integer startAge;
-        public Integer endAge;
-
-        public TempContest(String name, String description, Integer startAge, Integer endAge) {
-            this.name = name;
-            this.description = description;
-            this.startAge = startAge;
-            this.endAge = endAge;
-        }
-    }
+    public record ContestSeed(String name, String description, Integer startAge, Integer endAge) {}
 }
