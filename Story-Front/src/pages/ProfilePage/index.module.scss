@@ -54,6 +54,7 @@
 .profileSummary {
   min-height: 62px;
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
   gap: 18px;
@@ -76,6 +77,8 @@
 
 .profileIdentity {
   display: flex;
+  flex: 1 1 260px;
+  min-width: 0;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 24px;
@@ -88,6 +91,7 @@
 
   span {
     color: $text-light;
+    overflow-wrap: anywhere;
   }
 }
 
@@ -141,7 +145,17 @@
 
 .profileEditActions {
   display: flex;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 8px;
+
+  :global(button) {
+    max-width: 100%;
+    white-space: normal;
+  }
 }
 
 .stats {
