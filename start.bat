@@ -4,7 +4,6 @@
 - `story-back` — бэкенд на Spring Boot 3 (Java 21, PostgreSQL, Minio, JWT)
 - `Story-Front` — фронтенд на React 18 + TypeScript (Create React App)
 - `Story-Data` — инфраструктура: Docker Compose (PostgreSQL + Minio + Spring)
-- `Story-Tables` — Python-утилита для генерации отчётов/дипломов
 
 ---
 
@@ -97,15 +96,6 @@ npm start        # http://localhost:3000
 
 ---
 
-## 6. Генерация отчётов
-
-Python-утилита в `Story-Tables` (`main.py`, `requirements.txt`). Запуск:
-
-```bash
-cd Story-Tables
-pip install -r requirements.txt
-python main.py
-```
 @echo off
 chcp 65001 >nul
 echo ==========================================

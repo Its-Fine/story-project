@@ -52,3 +52,8 @@ tsc-output*.txt
 
 # Trash
 .trash/
+
+# Удалённые компоненты старого проекта
+old_front/
+old-front/
+Story-Tables/
