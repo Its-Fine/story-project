@@ -8,7 +8,9 @@
 |---|---|
 | `Story-Front` | Веб-интерфейс: регистрация, вход, профиль и форма заявки. React + TypeScript. |
 | `story-auth` | Регистрация, вход и проверка JWT. Spring Boot, Java 21. |
-| `story-back` | API конкурса, заявок, файлов и отчётов. Spring Boot, Java 21. |
+| `story-common` | Общие сущности, DTO, репозитории, JWT-проверка и MinIO-клиент. |
+| `story-back` | Пользовательский API конкурса, заявок и файлов. Spring Boot, Java 21. |
+| `story-admin` | Изолированный административный API и Excel-отчёты. Spring Boot, Java 21. |
 | `Story-Data` | Docker Compose, PostgreSQL и MinIO. |
 
 ## Сборка backend
@@ -25,6 +27,7 @@ mvn verify
 ```powershell
 mvn -pl story-auth -am verify
 mvn -pl story-back -am verify
+mvn -pl story-admin -am verify
 ```
 
 `Story-Tables` в Maven-сборку не входит. Общие версии Java, Spring Boot, JWT и
@@ -36,7 +39,7 @@ mvn -pl story-back -am verify
 ### Требования
 
 - Установленный и запущенный Docker Desktop с Docker Compose.
-- Свободные порты `3000`, `5432`, `8000`, `8001`, `9000` и `9001`.
+- Свободные порты `3000`, `5432`, `8000`, `8001`, `8002`, `9000` и `9001`.
 
 ### 1. Подготовьте настройки
 
@@ -69,7 +72,7 @@ docker compose up -d --build
 ```
 
 Первый запуск может занять несколько минут: Docker скачает образы, выполнит тесты
-и соберёт два Java-сервиса, затем соберёт фронтенд.
+и соберёт три Java-сервиса, затем соберёт фронтенд.
 
 Для существующей PostgreSQL без истории Flyway сначала выполните безопасную
 процедуру baseline из [инструкции по миграциям](docs/database-migrations.md).
@@ -81,10 +84,13 @@ docker compose up -d --build
 |---|---|
 | Веб-приложение | <http://localhost:3000> |
 | Swagger API | <http://localhost:8000/swagger-ui/index.html> |
+| Swagger Admin API | <http://localhost:8002/swagger-ui/index.html> |
 | PostgreSQL | `localhost:5432` (подключаться через pgAdmin/DBeaver; это не сайт и в браузере не открывается) |
 | MinIO API / консоль | `localhost:9000` / <http://localhost:9001> |
 
-Фронтенд сам перенаправляет запросы авторизации в `story-auth`, а остальные API-запросы — в `story-back`. Обычно достаточно открыть только `http://localhost:3000`.
+Фронтенд перенаправляет авторизацию в `story-auth`, административные запросы и
+отчёты — в `story-admin`, остальные API-запросы — в `story-back`. Обычно
+достаточно открыть только `http://localhost:3000`.
 
 ### 4. Войдите или зарегистрируйтесь
 

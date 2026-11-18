@@ -6,6 +6,7 @@ set -eu
 : "${STORY_MIGRATION_DB_PASSWORD:?STORY_MIGRATION_DB_PASSWORD is required}"
 : "${STORY_AUTH_DB_PASSWORD:?STORY_AUTH_DB_PASSWORD is required}"
 : "${STORY_BACK_DB_PASSWORD:?STORY_BACK_DB_PASSWORD is required}"
+: "${STORY_ADMIN_DB_PASSWORD:?STORY_ADMIN_DB_PASSWORD is required}"
 
 psql --set ON_ERROR_STOP=1 \
   --username "$POSTGRES_USER" \
@@ -13,7 +14,8 @@ psql --set ON_ERROR_STOP=1 \
   --set=database_name="$POSTGRES_DB" \
   --set=migration_password="$STORY_MIGRATION_DB_PASSWORD" \
   --set=auth_password="$STORY_AUTH_DB_PASSWORD" \
-  --set=back_password="$STORY_BACK_DB_PASSWORD" <<'SQL'
+  --set=back_password="$STORY_BACK_DB_PASSWORD" \
+  --set=admin_password="$STORY_ADMIN_DB_PASSWORD" <<'SQL'
 SELECT format('CREATE ROLE story_migrator LOGIN PASSWORD %L', :'migration_password')
 WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'story_migrator')
 \gexec
@@ -32,9 +34,15 @@ WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'story_back')
 SELECT format('ALTER ROLE story_back WITH LOGIN PASSWORD %L', :'back_password')
 \gexec
 
-GRANT CONNECT ON DATABASE :"database_name" TO story_migrator, story_auth, story_back;
+SELECT format('CREATE ROLE story_admin LOGIN PASSWORD %L', :'admin_password')
+WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'story_admin')
+\gexec
+SELECT format('ALTER ROLE story_admin WITH LOGIN PASSWORD %L', :'admin_password')
+\gexec
+
+GRANT CONNECT ON DATABASE :"database_name" TO story_migrator, story_auth, story_back, story_admin;
 GRANT USAGE, CREATE ON SCHEMA public TO story_migrator;
-GRANT USAGE ON SCHEMA public TO story_auth, story_back;
+GRANT USAGE ON SCHEMA public TO story_auth, story_back, story_admin;
 
 -- Existing installations were created by POSTGRES_USER/Hibernate. Transfer only
 -- application objects in public; database ownership and the admin role stay intact.
