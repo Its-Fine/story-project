@@ -3,11 +3,11 @@ package com.example.story.auth.controller;
 import com.example.story.auth.dto.LoginRequestDto;
 import com.example.story.auth.dto.SignupRequestDto;
 import com.example.story.auth.dto.AuthResponseDto;
+import com.example.story.auth.config.StoryAuthProperties;
 import com.example.story.auth.entity.AuthUser;
 import com.example.story.auth.repository.AuthUserRepository;
 import com.example.story.auth.service.AuthService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
@@ -28,27 +28,25 @@ public class AuthController {
     private final AuthService authService;
     private final AuthUserRepository authUserRepository;
     private final PasswordEncoder passwordEncoder;
-
-    @Value("${story.cookie.secure:false}")
-    private boolean cookieSecure;
+    private final StoryAuthProperties storyAuthProperties;
 
     private ResponseCookie buildRefreshCookie(String value) {
         return ResponseCookie.from("refreshToken", value)
                 .httpOnly(true)
-                .secure(cookieSecure)
+                .secure(Boolean.TRUE.equals(storyAuthProperties.getCookie().getSecure()))
                 .path("/api/v1/auth/refresh")
                 .maxAge(Duration.ofDays(1))
-                .sameSite(cookieSecure ? "None" : "Lax")
+                .sameSite(storyAuthProperties.getCookie().getSameSite())
                 .build();
     }
 
     private ResponseCookie buildClearCookie() {
         return ResponseCookie.from("refreshToken", "")
                 .httpOnly(true)
-                .secure(cookieSecure)
+                .secure(Boolean.TRUE.equals(storyAuthProperties.getCookie().getSecure()))
                 .path("/api/v1/auth/refresh")
                 .maxAge(0)
-                .sameSite(cookieSecure ? "None" : "Lax")
+                .sameSite(storyAuthProperties.getCookie().getSameSite())
                 .build();
     }
 
