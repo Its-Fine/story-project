@@ -21,6 +21,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,6 +45,7 @@ class StoryApplicationTests {
     @Autowired ApplicationRepository applicationRepository;
     @Autowired ContestRepository contestRepository;
     @Autowired WorkRepository workRepository;
+    @Autowired PasswordEncoder passwordEncoder;
     @PersistenceContext EntityManager entityManager;
     UserEntity user;
     String access;
@@ -59,6 +61,7 @@ class StoryApplicationTests {
         eventSettings.saveAndFlush(settings);
 
         users.findByEmail(JwtTokens.EMAIL).ifPresent(users::delete);
+        users.flush();
         user = new UserEntity();
         user.setEmail(JwtTokens.EMAIL);
         user.setPassword("unused-hash");
@@ -100,6 +103,36 @@ class StoryApplicationTests {
     void deletedAccountsAreRejected() throws Exception {
         users.delete(user);
         mvc.perform(get("/api/v1/account/data").header("Authorization", "Bearer " + access)).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @Transactional
+    void closedEventDoesNotBlockProfileOrPasswordUpdates() throws Exception {
+        EventSettingsEntity settings = eventSettings.findById((short) 1).orElseThrow();
+        settings.setApplicationsClosed(true);
+        eventSettings.saveAndFlush(settings);
+
+        user.setPassword(passwordEncoder.encode("CurrentPass123"));
+        users.saveAndFlush(user);
+
+        mvc.perform(put("/api/v1/account/data")
+                        .header("Authorization", "Bearer " + access)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"firstName\":\"Updated\",\"lastName\":\"Profile\"}"))
+                .andExpect(status().isNoContent());
+
+        mvc.perform(put("/api/v1/account/password")
+                        .header("Authorization", "Bearer " + access)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"CurrentPass123\",\"newPassword\":\"NewPass456\"}"))
+                .andExpect(status().isNoContent());
+
+        entityManager.flush();
+        entityManager.clear();
+        UserEntity updated = users.findById(user.getId()).orElseThrow();
+        assertThat(updated.getFirstName()).isEqualTo("Updated");
+        assertThat(updated.getLastName()).isEqualTo("Profile");
+        assertThat(passwordEncoder.matches("NewPass456", updated.getPassword())).isTrue();
     }
 
     @Test
