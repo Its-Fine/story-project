@@ -147,7 +147,7 @@ export const ProfilePage = () => {
     const token = localStorage.getItem('token');
     if (!token || savingPassword) return;
 
-    if (!/^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=\\S+$).{8,255}$/.test(passwordDraft.newPassword)) {
+    if (!/^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=\S+$).{8,255}$/.test(passwordDraft.newPassword)) {
       setError(t('Пароль должен содержать 8–255 символов, цифру, строчную и заглавную буквы без пробелов'));
       return;
     }
@@ -169,7 +169,9 @@ export const ProfilePage = () => {
         newPassword: passwordDraft.newPassword,
       }, token);
       if (response.status !== 204 && response.status !== 200) {
-        throw new Error(response.error?.message || t('Не удалось изменить пароль'));
+        throw new Error(response.error?.message === 'Wrong password'
+          ? t('Текущий пароль указан неверно')
+          : response.error?.message || t('Не удалось изменить пароль'));
       }
       setPasswordDraft({ currentPassword: '', newPassword: '', confirmPassword: '' });
       setPasswordMessage(t('Пароль успешно изменён'));

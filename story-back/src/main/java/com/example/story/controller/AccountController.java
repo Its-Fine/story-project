@@ -3,7 +3,6 @@ package com.example.story.controller;
 import com.example.story.dto.errors.ResponseErrorDto;
 import com.example.story.dto.users.RequestUserDataDto;
 import com.example.story.dto.users.RequestUserPasswordDto;
-import com.example.story.service.EventService;
 import com.example.story.service.UsersService;
 
 import lombok.RequiredArgsConstructor;
@@ -18,7 +17,6 @@ import org.springframework.web.bind.annotation.*;
 public class AccountController {
 
     private final UsersService usersService;
-    private final EventService eventService;
 
     @GetMapping("/data")
     public ResponseEntity<?> getUserData() {
@@ -32,11 +30,8 @@ public class AccountController {
     @PutMapping("/data")
     public ResponseEntity<?> putUserData(@RequestBody @Validated RequestUserDataDto dto) {
         try {
-            if (eventService.getClosed()) return ResponseEntity.status(HttpStatus.GONE).build();
-            else {
-                usersService.updateUserData(dto);
-                return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
-            }
+            usersService.updateUserData(dto);
+            return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ResponseErrorDto(e.getMessage()));
         }

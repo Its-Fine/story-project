@@ -233,6 +233,7 @@ const english: Record<string, string> = {
   'Пароль должен содержать 8–255 символов, цифру, строчную и заглавную буквы без пробелов': 'Password must be 8–255 characters and include a digit, lowercase and uppercase letters, with no spaces',
   'Новые пароли не совпадают': 'The new passwords do not match',
   'Новый пароль должен отличаться от текущего': 'The new password must differ from the current password',
+  'Текущий пароль указан неверно': 'The current password is incorrect',
   'Не удалось изменить пароль': 'Could not change the password',
   'Пароль успешно изменён': 'Password changed successfully',
   'Изменить пароль': 'Change password'
