@@ -59,6 +59,7 @@ administrator and contest creation are explicit one-off operations documented in
 | **frontend** | 3000 | React SPA (nginx) |
 | **story-auth** | 8001 | Authentication service (JWT, refresh-cookie) |
 | **story-back** | 8000 | Main backend API |
+| **story-admin** | 8002 | Administrative API and reports |
 | **postgresql** | 5432 | PostgreSQL 16 database |
 | **minio** | 9000/9001 | S3-compatible object storage (API/Console) |
 
@@ -85,11 +86,12 @@ docker compose logs -f story-auth   # Single service
 If you prefer running frontend/backend locally (not in Docker):
 
 1. Start only infrastructure: `docker compose up -d postgresql minio`
-2. From the repository root, verify both backend modules with `mvn verify` (or one
-   module with `mvn -pl story-auth -am verify` / `mvn -pl story-back -am verify`).
+2. From the repository root, verify backend modules with `mvn verify` (or one
+   module with `mvn -pl story-auth -am verify`, `mvn -pl story-back -am verify`,
+   or `mvn -pl story-admin -am verify`).
 3. Run Spring Boot apps with `STORY_DATASOURCE_HOST=localhost`, `STORY_MINIO_HOST=localhost`.
 4. Run frontend with `npm start`.
 
 The backend Dockerfiles use the repository root as their build context because
-both services inherit shared versions and build settings from the root `pom.xml`.
+all services inherit shared versions and build settings from the root `pom.xml`.
 Their normal image builds run Maven tests; `Story-Tables` is not a Maven module.

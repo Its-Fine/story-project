@@ -21,6 +21,7 @@
         <module>story-common</module>
         <module>story-auth</module>
         <module>story-back</module>
+        <module>story-admin</module>
     </modules>
 
     <properties>

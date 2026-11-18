@@ -4,6 +4,7 @@ COPY pom.xml ./pom.xml
 COPY story-common/pom.xml ./story-common/pom.xml
 COPY story-auth/pom.xml ./story-auth/pom.xml
 COPY story-back/pom.xml ./story-back/pom.xml
+COPY story-admin/pom.xml ./story-admin/pom.xml
 COPY story-common/src ./story-common/src
 COPY story-back/src ./story-back/src
 RUN mvn -B -pl story-back -am clean verify

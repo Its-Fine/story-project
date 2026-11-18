@@ -56,10 +56,12 @@ docker compose exec postgresql sh -lc 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB
 | `POSTGRES_USER` | только администрирование и восстановление |
 | `story_migrator` | владелец объектов схемы и запуск Flyway |
 | `story_auth` | чтение, регистрация и обновление пользователей |
-| `story_back` | бизнес-таблицы и необходимые операции с профилем |
+| `story_back` | пользовательские бизнес-операции и профиль |
+| `story_admin` | административные операции и отчёты |
 
 Пароли задаются через `STORY_MIGRATION_DB_PASSWORD`,
-`STORY_AUTH_DB_PASSWORD` и `STORY_BACK_DB_PASSWORD`. Они должны быть разными.
+`STORY_AUTH_DB_PASSWORD`, `STORY_BACK_DB_PASSWORD` и
+`STORY_ADMIN_DB_PASSWORD`. Они должны быть разными.
 Backend-контейнеры больше не получают пароль `POSTGRES_USER`.
 
 На новой пустой PostgreSQL роли создаёт
