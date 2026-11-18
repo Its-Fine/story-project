@@ -1,0 +1,12 @@
+.git
+.github
+.idea
+.trash
+.env
+**/.env
+**/target
+**/node_modules
+Story-Front/build
+Story-Tables
+old_front
+old-front

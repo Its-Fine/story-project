@@ -52,7 +52,9 @@ services:
         exit 1
 
   story-auth:
-    build: ../story-auth
+    build:
+      context: ..
+      dockerfile: story-auth/Dockerfile
     container_name: story-spring-auth
     environment:
       STORY_DATASOURCE_HOST: postgresql
@@ -68,7 +70,9 @@ services:
     restart: always
 
   story-back:
-    build: ../story-back
+    build:
+      context: ..
+      dockerfile: story-back/Dockerfile
     container_name: story-spring
     environment:
       STORY_DATASOURCE_HOST: postgresql
