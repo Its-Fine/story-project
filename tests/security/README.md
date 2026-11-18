@@ -1,7 +1,7 @@
 # JWT and account security checks
 
 These checks exercise `story-auth` and `story-back` from this branch. They do not
-use `Story-Tables`, the running development stack, or existing PostgreSQL data.
+use the running development stack or existing PostgreSQL data.
 
 ## Verified on 2026-11-16
 

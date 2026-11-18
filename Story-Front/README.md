@@ -1,4 +1,3 @@
-# Story-Tables
 # Story Frontend
 
 Фронтенд для системы Story на React + TypeScript (Create React App).
