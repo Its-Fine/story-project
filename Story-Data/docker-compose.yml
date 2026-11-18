@@ -69,6 +69,8 @@ services:
     depends_on:
       postgresql:
         condition: service_healthy
+      story-back:
+        condition: service_healthy
     restart: always
 
   story-back:
@@ -91,12 +93,18 @@ services:
       STORY_ADMIN_USERNAME: ${STORY_ADMIN_USERNAME:-}
       STORY_ADMIN_PASSWORD: ${STORY_ADMIN_PASSWORD:-}
       STORY_BOOTSTRAP_CONTESTS_ENABLED: ${STORY_BOOTSTRAP_CONTESTS_ENABLED:-false}
+      STORY_FLYWAY_BASELINE_ON_MIGRATE: ${STORY_FLYWAY_BASELINE_ON_MIGRATE:-false}
     ports: ["8000:8000"]
     depends_on:
       postgresql:
         condition: service_healthy
       minio-init:
         condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/8000'"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
     restart: always
 
   frontend:
