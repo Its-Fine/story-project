@@ -16,3 +16,6 @@ story:
     expiration-refresh: 1d
   cookie:
     secure: false
+    same-site: Lax
+  cors:
+    allowed-origins: http://localhost:3000

@@ -15,6 +15,11 @@ story:
   admin:
     email: test-admin@example.com
     password: Test-admin-password-123
+  bootstrap:
+    admin-enabled: true
+    contests-enabled: true
+  cors:
+    allowed-origins: http://localhost:3000
   minio:
     url: http://127.0.0.1:19000
     access-key: test-access-key
