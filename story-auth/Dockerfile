@@ -1,14 +1,13 @@
-# Этап сборки
 FROM maven:3.9-eclipse-temurin-21 AS builder
 WORKDIR /app
-COPY pom.xml .
-COPY .mvn .mvn
-COPY src ./src
-RUN mvn clean package -DskipTests
+COPY pom.xml ./pom.xml
+COPY story-auth/pom.xml ./story-auth/pom.xml
+COPY story-back/pom.xml ./story-back/pom.xml
+COPY story-auth/src ./story-auth/src
+RUN mvn -B -pl story-auth -am clean verify
 
-# Этап запуска
 FROM eclipse-temurin:21-jre-jammy
 WORKDIR /app
-COPY --from=builder /app/target/*.jar app.jar
+COPY --from=builder /app/story-auth/target/*.jar app.jar
 EXPOSE 8001
 ENTRYPOINT ["java", "-jar", "app.jar"]
