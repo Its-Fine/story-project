@@ -38,14 +38,19 @@ Docker Compose configuration for deploying the entire Story information system.
 ## Quick Start
 
 ```bash
-# Copy environment file
-cp .env.example .env
+# Local development only
+cp .env.local.example .env
 
-# Edit .env - change STORY_JWT_SECRET to a random Base64 string (≥32 bytes)
+# Edit .env: replace all local passwords and STORY_JWT_SECRET
 
 # Start all services
 docker compose up -d --build
 ```
+
+For production, start from `.env.example`. It contains no fallback secrets and
+Compose will stop with a clear error while a required value is empty. Initial
+administrator and contest creation are explicit one-off operations documented in
+[`docs/configuration.md`](../docs/configuration.md).
 
 ## Services
 
