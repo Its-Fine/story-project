@@ -1,0 +1,13 @@
+ALTER TABLE applications
+    ADD COLUMN IF NOT EXISTS status VARCHAR(255) NOT NULL DEFAULT 'PENDING';
+
+ALTER TABLE applications
+    ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
+
+UPDATE applications
+SET status = 'PENDING'
+WHERE status IS NULL;
+
+ALTER TABLE applications
+    ALTER COLUMN status SET DEFAULT 'PENDING',
+    ALTER COLUMN status SET NOT NULL;

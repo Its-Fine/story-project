@@ -7,14 +7,14 @@ spring:
 
   datasource:
     url: jdbc:postgresql://${STORY_DATASOURCE_HOST}:5432/${POSTGRES_DB}
-    username: ${POSTGRES_USER}
-    password: ${POSTGRES_PASSWORD}
+    username: story_auth
+    password: ${STORY_AUTH_DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
       format_sql: true
 
 story:

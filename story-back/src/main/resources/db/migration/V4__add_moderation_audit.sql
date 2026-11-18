@@ -1,5 +1,3 @@
--- Add moderation audit and optimistic locking without changing existing data.
-
 ALTER TABLE applications
     ADD COLUMN IF NOT EXISTS reviewed_by VARCHAR(255),
     ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMP,
