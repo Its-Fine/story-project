@@ -10,7 +10,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@PreAuthorize("hasRole('PARTICIPANT')")
+@PreAuthorize("hasAuthority(T(com.example.story.security.Permissions).CONTEST_READ)")
 @RequestMapping("/api/v1/contests")
 @RequiredArgsConstructor
 public class ContestsController {

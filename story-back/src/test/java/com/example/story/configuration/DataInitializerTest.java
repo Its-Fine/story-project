@@ -91,4 +91,22 @@ class DataInitializerTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("at least 12 characters");
     }
+
+    @Test
+    void newAdministratorReceivesDatabaseRoleMapping() {
+        properties.getBootstrap().setAdminEnabled(true);
+        properties.getAdmin().setEmail("admin@example.com");
+        properties.getAdmin().setPassword("ConfiguredPassword123");
+        when(eventSettings.existsById((short) 1)).thenReturn(true);
+        when(users.findByEmail("admin@example.com")).thenReturn(Optional.empty());
+        when(users.saveAndFlush(any(UserEntity.class))).thenAnswer(invocation -> {
+            UserEntity user = invocation.getArgument(0);
+            user.setId(7L);
+            return user;
+        });
+
+        initializer.run(mock(ApplicationArguments.class));
+
+        verify(users).assignRole(7L, "ADMIN");
+    }
 }

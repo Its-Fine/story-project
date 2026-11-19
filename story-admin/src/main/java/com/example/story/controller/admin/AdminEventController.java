@@ -12,7 +12,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAuthority(T(com.example.story.security.Permissions).EVENT_MANAGE)")
 @RequestMapping("/api/v1/admin/event")
 @RequiredArgsConstructor
 public class AdminEventController {

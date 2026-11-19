@@ -11,6 +11,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import static com.example.story.utilities.Helpers.getCurrentUser;
+import static com.example.story.security.AuthorizationRules.requireAuthority;
+import static com.example.story.security.Permissions.EVENT_MANAGE;
 
 @Service
 @RequiredArgsConstructor
@@ -25,6 +27,7 @@ public class EventService {
 
     @Transactional
     public ResponseEventDto setStatus(RequestEventDto dto) {
+        requireAuthority(EVENT_MANAGE);
         EventSettingsEntity settings = getOrCreateSettings();
         settings.setApplicationsClosed(dto.getClose());
         EventSettingsEntity savedSettings = eventSettingsRepository.save(settings);

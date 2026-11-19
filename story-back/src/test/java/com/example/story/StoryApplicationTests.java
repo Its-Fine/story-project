@@ -71,6 +71,7 @@ class StoryApplicationTests {
         user.setConsent(true);
         user.setParentConsent(false);
         user = users.saveAndFlush(user);
+        users.assignRole(user.getId(), "PARTICIPANT");
         access = JwtTokens.token("ACCESS", "PARTICIPANT");
     }
 
@@ -139,11 +140,9 @@ class StoryApplicationTests {
     void adminPermissionFollowsDatabaseRoleEvenWithAnOldToken() throws Exception {
         String adminToken = JwtTokens.token("ACCESS", "ADMIN");
         mvc.perform(get("/api/v1/admin/users/count").header("Authorization", "Bearer " + adminToken)).andExpect(status().isForbidden());
-        user.setRole("ADMIN");
-        users.saveAndFlush(user);
+        changeRole(user, "ADMIN");
         mvc.perform(get("/api/v1/admin/users/count").header("Authorization", "Bearer " + access)).andExpect(status().isOk());
-        user.setRole("PARTICIPANT");
-        users.saveAndFlush(user);
+        changeRole(user, "PARTICIPANT");
         mvc.perform(get("/api/v1/admin/users/count").header("Authorization", "Bearer " + adminToken)).andExpect(status().isForbidden());
     }
 
@@ -153,7 +152,7 @@ class StoryApplicationTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.close").value(false));
 
-        user.setRole("ADMIN");
+        changeRole(user, "ADMIN");
         user.setClosedAccess(true);
         users.saveAndFlush(user);
 
@@ -174,8 +173,7 @@ class StoryApplicationTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.close").value(true));
 
-        user.setRole("PARTICIPANT");
-        users.saveAndFlush(user);
+        changeRole(user, "PARTICIPANT");
 
         mvc.perform(post("/api/v1/applications")
                         .param("conId", "1")
@@ -217,8 +215,7 @@ class StoryApplicationTests {
         work.setApplicationEntity(application);
         work = workRepository.saveAndFlush(work);
 
-        user.setRole("ADMIN");
-        users.saveAndFlush(user);
+        changeRole(user, "ADMIN");
         entityManager.clear();
 
         mvc.perform(patch("/api/v1/admin/applications/{appId}/status", application.getId())
@@ -252,8 +249,7 @@ class StoryApplicationTests {
                 .andExpect(jsonPath("$.ratedBy").value(JwtTokens.EMAIL));
 
         UserEntity participant = users.findById(user.getId()).orElseThrow();
-        participant.setRole("PARTICIPANT");
-        users.saveAndFlush(participant);
+        changeRole(participant, "PARTICIPANT");
         entityManager.clear();
 
         mvc.perform(get("/api/v1/applications").header("Authorization", "Bearer " + access))
@@ -262,5 +258,12 @@ class StoryApplicationTests {
                 .andExpect(jsonPath("$[0].rejectionReason").value("Incomplete description"))
                 .andExpect(jsonPath("$[0].works[0].rate").value(87))
                 .andExpect(jsonPath("$[0].works[0].isRated").value(true));
+    }
+
+    private void changeRole(UserEntity target, String role) {
+        target.setRole(role);
+        users.saveAndFlush(target);
+        users.removeAllRoles(target.getId());
+        users.assignRole(target.getId(), role);
     }
 }

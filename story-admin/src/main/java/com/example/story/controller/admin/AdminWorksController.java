@@ -16,7 +16,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 
 @RestController
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAuthority(T(com.example.story.security.Permissions).WORK_READ_ANY)")
 @RequestMapping("/api/v1/admin/works")
 @RequiredArgsConstructor
 public class AdminWorksController {
@@ -52,6 +52,7 @@ public class AdminWorksController {
     }
 
     @PutMapping("/{workId}/rating")
+    @PreAuthorize("hasAuthority(T(com.example.story.security.Permissions).WORK_RATE)")
     public ResponseEntity<?> putRating(@PathVariable Long workId,
                                        @RequestBody @Validated RequestWorkRatingDto dto) {
         try {
@@ -67,6 +68,7 @@ public class AdminWorksController {
     }
 
     @DeleteMapping("/{workId}/rating")
+    @PreAuthorize("hasAuthority(T(com.example.story.security.Permissions).WORK_RATE)")
     public ResponseEntity<?> deleteRating(@PathVariable Long workId) {
         try {
             return ResponseEntity.ok(adminWorksService.clearRating(workId));

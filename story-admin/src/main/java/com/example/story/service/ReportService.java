@@ -18,6 +18,9 @@ import java.time.LocalDate;
 import java.time.Period;
 import java.util.*;
 
+import static com.example.story.security.AuthorizationRules.requireAuthority;
+import static com.example.story.security.Permissions.REPORT_EXPORT;
+
 @Service
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
@@ -38,6 +41,7 @@ public class ReportService {
     private final MemberRepository memberRepository;
 
     public byte[] generateApplicationsReport() {
+        requireAuthority(REPORT_EXPORT);
         List<UserEntity> users = userRepository.findAll();
         Map<String, List<UserApplicationData>> byContest = new LinkedHashMap<>();
         for (UserEntity user : users) {

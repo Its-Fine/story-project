@@ -1,6 +1,5 @@
 package com.example.story.service.admin;
 
-import com.example.story.configuration.StoryProperties;
 import com.example.story.dto.storage.LoadedFile;
 import com.example.story.dto.works.ResponseWorkAdminDto;
 import com.example.story.dto.works.RequestWorkRatingDto;
@@ -24,6 +23,9 @@ import java.util.List;
 import java.time.LocalDateTime;
 
 import static com.example.story.utilities.Helpers.getCurrentUser;
+import static com.example.story.security.AuthorizationRules.requireAuthority;
+import static com.example.story.security.Permissions.WORK_RATE;
+import static com.example.story.security.Permissions.WORK_READ_ANY;
 
 @Service
 @Transactional
@@ -37,8 +39,7 @@ public class AdminWorksService {
     private final StorageService storageService;
 
     public List<ResponseWorkAdminDto> obtainAllInfo(Long appId) {
-        UserEntity admin = getCurrentUser(userRepository);
-        if (!admin.getRole().equals(StoryProperties.Roles.ADMIN.toString())) throw new RuntimeException("You are not an administrator");
+        requireAuthority(WORK_READ_ANY);
 
         ApplicationEntity application = applicationRepository.findById(appId).orElseThrow(() -> new RuntimeException("Application not found"));
         List<ResponseWorkAdminDto> result = new ArrayList<>();
@@ -49,16 +50,14 @@ public class AdminWorksService {
     }
 
     public ResponseWorkAdminDto obtainInfo(Long workId) {
-        UserEntity admin = getCurrentUser(userRepository);
-        if (!admin.getRole().equals(StoryProperties.Roles.ADMIN.toString())) throw new RuntimeException("You are not an administrator");
+        requireAuthority(WORK_READ_ANY);
 
         WorkEntity work = workRepository.findById(workId).orElseThrow(() -> new RuntimeException("Work not found"));
         return workMapper.entityToWorkAdminDto(work);
     }
 
     public LoadedFile obtainData(Long workId) throws IOException {
-        UserEntity admin = getCurrentUser(userRepository);
-        if (!admin.getRole().equals(StoryProperties.Roles.ADMIN.toString())) throw new RuntimeException("You are not an administrator");
+        requireAuthority(WORK_READ_ANY);
 
         WorkEntity work = workRepository.findById(workId).orElseThrow(() -> new RuntimeException("Work not found"));
         if (work.getBroken()) throw new IOException("Work file is broken");
@@ -100,9 +99,7 @@ public class AdminWorksService {
 
     private UserEntity requireAdmin() {
         UserEntity admin = getCurrentUser(userRepository);
-        if (!admin.getRole().equals(StoryProperties.Roles.ADMIN.toString())) {
-            throw new RuntimeException("You are not an administrator");
-        }
+        requireAuthority(WORK_RATE);
         return admin;
     }
 }

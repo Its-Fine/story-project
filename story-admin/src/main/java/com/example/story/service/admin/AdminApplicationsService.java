@@ -1,6 +1,5 @@
 package com.example.story.service.admin;
 
-import com.example.story.configuration.StoryProperties;
 import com.example.story.dto.applications.*;
 import com.example.story.entity.*;
 import com.example.story.exception.ResourceNotFoundException;
@@ -17,6 +16,9 @@ import java.util.List;
 import java.time.LocalDateTime;
 
 import static com.example.story.utilities.Helpers.getCurrentUser;
+import static com.example.story.security.AuthorizationRules.requireAuthority;
+import static com.example.story.security.Permissions.APPLICATION_MODERATE;
+import static com.example.story.security.Permissions.APPLICATION_READ_ANY;
 
 @Service
 @Transactional
@@ -31,8 +33,7 @@ public class AdminApplicationsService {
 
 
     public Long obtainCount(Long userId, Long conId) {
-        UserEntity admin = getCurrentUser(userRepository);
-        if (!admin.getRole().equals(StoryProperties.Roles.ADMIN.toString())) throw new RuntimeException("You are not an administrator");
+        requireAuthority(APPLICATION_READ_ANY);
 
         if (userId == null) {
             if (conId == null) return applicationRepository.count();
@@ -45,8 +46,7 @@ public class AdminApplicationsService {
     }
 
     public List<ResponseApplicationAdminDto> obtainAll(Long userId, Long conId, Long count, Long page) {
-        UserEntity admin = getCurrentUser(userRepository);
-        if (!admin.getRole().equals(StoryProperties.Roles.ADMIN.toString())) throw new RuntimeException("You are not an administrator");
+        requireAuthority(APPLICATION_READ_ANY);
 
         List<ApplicationEntity> applications;
         if (count == null) {
@@ -77,8 +77,7 @@ public class AdminApplicationsService {
     }
 
     public ResponseApplicationAdminDto obtainByAppId(Long appId) {
-        UserEntity admin = getCurrentUser(userRepository);
-        if (!admin.getRole().equals(StoryProperties.Roles.ADMIN.toString())) throw new RuntimeException("You are not an administrator");
+        requireAuthority(APPLICATION_READ_ANY);
 
         ApplicationEntity application = applicationRepository.findById(appId).orElseThrow(() -> new RuntimeException("Application not found"));
 
@@ -87,9 +86,7 @@ public class AdminApplicationsService {
 
     public ResponseApplicationAdminDto updateStatus(Long appId, RequestApplicationStatusDto dto) {
         UserEntity admin = getCurrentUser(userRepository);
-        if (!admin.getRole().equals(StoryProperties.Roles.ADMIN.toString())) {
-            throw new RuntimeException("You are not an administrator");
-        }
+        requireAuthority(APPLICATION_MODERATE);
 
         ApplicationEntity application = applicationRepository.findById(appId)
                 .orElseThrow(() -> new ResourceNotFoundException("Application not found"));
