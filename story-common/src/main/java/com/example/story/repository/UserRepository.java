@@ -30,6 +30,8 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     @Query(value = "SELECT * FROM users WHERE email = :email", nativeQuery = true)
     Optional<UserEntity> findByEmail(String email);
 
+    Optional<UserEntity> findByOidcIssuerAndOidcSubject(String oidcIssuer, String oidcSubject);
+
     @Query(value = """
             SELECT DISTINCT ur.role_name
             FROM user_roles ur
