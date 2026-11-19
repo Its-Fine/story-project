@@ -14,6 +14,7 @@ import org.springframework.core.io.ResourceLoader;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -97,6 +98,9 @@ class DataInitializerTest {
         properties.getBootstrap().setAdminEnabled(true);
         properties.getAdmin().setEmail("admin@example.com");
         properties.getAdmin().setPassword("ConfiguredPassword123");
+        properties.getAdmin().setFirstName("Тестовый");
+        properties.getAdmin().setLastName("Администратор");
+        properties.getAdmin().setBirthDate(LocalDate.of(1999, 4, 15));
         when(eventSettings.existsById((short) 1)).thenReturn(true);
         when(users.findByEmail("admin@example.com")).thenReturn(Optional.empty());
         when(users.saveAndFlush(any(UserEntity.class))).thenAnswer(invocation -> {
@@ -107,6 +111,11 @@ class DataInitializerTest {
 
         initializer.run(mock(ApplicationArguments.class));
 
+        ArgumentCaptor<UserEntity> created = ArgumentCaptor.forClass(UserEntity.class);
+        verify(users).saveAndFlush(created.capture());
+        assertThat(created.getValue().getFirstName()).isEqualTo("Тестовый");
+        assertThat(created.getValue().getLastName()).isEqualTo("Администратор");
+        assertThat(created.getValue().getBirthDate()).isEqualTo(LocalDate.of(1999, 4, 15));
         verify(users).assignRole(7L, "ADMIN");
     }
 }

@@ -13,6 +13,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.util.unit.DataSize;
 
 import java.time.Duration;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
@@ -29,6 +30,7 @@ public class StoryProperties {
     private Jwt jwt = new Jwt();
     private Contest contest = new Contest();
     private Application application = new Application();
+    @Valid
     private Work work = new Work();
     @Valid
     private Admin admin = new Admin();
@@ -77,6 +79,8 @@ public class StoryProperties {
     public static class Work {
         private DataSize size;
         private int nameSize;
+        @NotEmpty
+        private List<@NotBlank String> allowedContentTypes = new ArrayList<>();
     }
 
     @Getter @Setter
@@ -95,6 +99,9 @@ public class StoryProperties {
     public static class Admin {
         private String email;
         private String password;
+        private String firstName;
+        private String lastName;
+        private LocalDate birthDate;
     }
 
     @Getter @Setter

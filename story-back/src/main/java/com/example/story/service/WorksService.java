@@ -21,7 +21,6 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
 import static com.example.story.utilities.Helpers.getCurrentUser;
 
@@ -137,8 +136,9 @@ public class WorksService {
         }
 
         String contentType = file.getContentType();
-        if (contentType == null || !Set.of("image/png", "image/jpeg", "image/jpg", "image/tiff").contains(contentType)) {
-            throw new RuntimeException("Invalid file format. Only PNG, JPEG, JPG, TIFF are allowed");
+        List<String> allowedTypes = storyProperties.getWork().getAllowedContentTypes();
+        if (contentType == null || !allowedTypes.contains(contentType)) {
+            throw new RuntimeException("Invalid file format. Allowed content types: " + String.join(", ", allowedTypes));
         }
         return app;
     }

@@ -3,7 +3,7 @@ FROM node:20-alpine AS build
 WORKDIR /app
 ENV NODE_OPTIONS=--max-old-space-size=4096
 COPY package.json package-lock.json ./
-RUN npm install --no-audit --no-fund
+RUN npm ci --no-audit --no-fund
 COPY . .
 ARG REACT_APP_API_URL=/api/v1
 ARG REACT_APP_AUTH_URL=/api/v1

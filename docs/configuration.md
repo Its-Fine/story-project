@@ -76,3 +76,23 @@ docker compose up -d --force-recreate story-back
 Существующие конкурсы с тем же точным названием не изменяются. При обычных
 рестартах флаг выключен, поэтому удалённые администратором конкурсы не создаются
 заново. Повторно включайте загрузку только осознанно.
+
+## Настройки без изменения исходников
+
+- В production frontend по умолчанию обращается к относительному пути
+  `/api/v1` через Nginx Gateway. Для standalone `npm start` локальные URL
+  задаются в `Story-Front/.env.development`; не переносите их в production.
+- Порт публикации frontend на хосте задаёт `STORY_FRONTEND_HOST_PORT`;
+  порты PostgreSQL и MinIO — `STORY_POSTGRES_HOST_PORT`,
+  `STORY_MINIO_API_HOST_PORT` и `STORY_MINIO_CONSOLE_HOST_PORT`.
+  Внутренние порты контейнеров остаются неизменными.
+- При **первом** создании администратора можно указать
+  `STORY_BOOTSTRAP_ADMIN_FIRST_NAME`, `STORY_BOOTSTRAP_ADMIN_LAST_NAME`
+  и `STORY_BOOTSTRAP_ADMIN_BIRTH_DATE` (формат YYYY-MM-DD).
+  Изменение этих переменных не переписывает существующего пользователя.
+- Допустимые MIME-типы загружаемых работ задаёт
+  `STORY_WORK_ALLOWED_CONTENT_TYPES` через запятую. Проверка выполняется
+  на backend; изменение настройки само по себе не проверяет содержимое файла.
+
+Все эти параметры находятся в шаблонах `Story-Data/.env*.example`.
+Переносимые в контейнер значения перечислены в `Story-Data/docker-compose.yml`.
