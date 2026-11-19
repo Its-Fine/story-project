@@ -47,7 +47,8 @@ public class AuthService {
         user.setConsent(Boolean.TRUE.equals(dto.getConsent()));
         user.setParentConsent(Boolean.TRUE.equals(dto.getParentConsent()));
 
-        authUserRepository.save(user);
+        authUserRepository.saveAndFlush(user);
+        authUserRepository.assignRole(user.getId(), "PARTICIPANT");
 
         return Map.of(
                 "access_token", jwtService.generateAccessToken(user),

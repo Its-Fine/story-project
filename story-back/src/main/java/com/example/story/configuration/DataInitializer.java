@@ -77,7 +77,8 @@ public class DataInitializer implements ApplicationRunner {
             admin.setConsent(true);
             admin.setParentConsent(true);
 
-            userRepository.save(admin);
+            userRepository.saveAndFlush(admin);
+            userRepository.assignRole(admin.getId(), StoryProperties.Roles.ADMIN.toString());
             log.info("Initial administrator created for configured email");
         } else {
             log.info("Initial administrator already exists; profile, role and password were not changed");
