@@ -67,5 +67,19 @@ services:
       keycloak:
         condition: service_healthy
 
+  frontend:
+    build:
+      context: ../Story-Front
+      args:
+        REACT_APP_API_URL: /api/v1
+        REACT_APP_AUTH_URL: /api/v1
+        REACT_APP_KEYCLOAK_ENABLED: "true"
+        REACT_APP_KEYCLOAK_URL: ${STORY_KEYCLOAK_PUBLIC_URL:-http://localhost:8080}
+        REACT_APP_KEYCLOAK_REALM: story
+        REACT_APP_KEYCLOAK_CLIENT_ID: story-frontend
+    depends_on:
+      keycloak:
+        condition: service_healthy
+
 volumes:
   story-keycloak-postgresql-volume:

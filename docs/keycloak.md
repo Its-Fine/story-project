@@ -139,6 +139,34 @@ audience сервиса. JWT без Keycloak issuer передаётся сущ�
 намеренно: до появления проверенного процесса связывания аккаунтов обычный запуск
 использует прежние JWT и не зависит от доступности Keycloak.
 
+## Проверка frontend через Keycloak
+
+Overlay включает Keycloak-кнопку входа и официальный адаптер `keycloak-js`:
+
+```powershell
+Set-Location C:\story-project\Story-Data
+docker compose --env-file .env `
+  -f docker-compose.yml `
+  -f docker-compose.keycloak.yml `
+  up -d --build frontend story-back story-admin keycloak
+```
+
+Откройте `http://localhost:3000`, нажмите «Войти через Keycloak» и используйте
+`STORY_ADMIN_USERNAME` с временным `STORY_ADMIN_PASSWORD` из локального `.env`.
+При первом входе Keycloak потребует установить новый пароль. После возврата в
+приложение администратор должен попасть в `/admin`; выход должен завершить сессию
+Keycloak и вернуть на начальный экран.
+
+Кнопка «Изменить пароль» в профиле и ссылка «Забыли пароль?» переводят управление
+паролем в Keycloak. В realm включено восстановление пароля, однако отправка письма
+потребует отдельной настройки SMTP. Старый вход и регистрация остаются рядом на
+время перехода, чтобы можно было быстро откатить включение overlay.
+
+Access- и refresh-токены Keycloak остаются в памяти адаптера и не записываются в
+`localStorage`. Перед защищённым API-запросом frontend вызывает обновление access
+token. Для другого адреса Keycloak задайте `STORY_KEYCLOAK_PUBLIC_URL`; этот адрес
+встраивается в статическую frontend-сборку и должен быть доступен браузеру.
+
 ## План переключения и отката
 
 1. Подключить `story-back` и `story-admin` как Spring OAuth2 Resource Server в

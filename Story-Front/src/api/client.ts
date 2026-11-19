@@ -1,3 +1,5 @@
+import { getValidAccessToken, isKeycloakAuthenticated } from '../auth/keycloak';
+
 export const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
 export const AUTH_BASE_URL = process.env.REACT_APP_AUTH_URL || 'http://localhost:8001/api/v1';
 
@@ -38,8 +40,12 @@ export const apiClient = async <T = any>({
       ...customHeaders,
     };
 
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
+    const accessToken = token && isKeycloakAuthenticated()
+      ? await getValidAccessToken()
+      : token;
+
+    if (accessToken) {
+      headers['Authorization'] = `Bearer ${accessToken}`;
     }
 
     const config: RequestInit = {

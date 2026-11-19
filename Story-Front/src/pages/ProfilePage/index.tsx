@@ -9,6 +9,7 @@ import { Application, Contest } from '../../api/applications';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import css from './index.module.scss';
+import { getAccessToken, isKeycloakAuthenticated, updateKeycloakPassword } from '../../auth/keycloak';
 
 export const ProfilePage = () => {
   const navigate = useNavigate();
@@ -34,7 +35,7 @@ export const ProfilePage = () => {
   const [savingApplication, setSavingApplication] = useState(false);
 
   const fetchApplications = useCallback(async () => {
-    const token = localStorage.getItem('token');
+    const token = getAccessToken();
     if (!token) {
       navigate('/', { replace: true });
       return;
@@ -53,7 +54,7 @@ export const ProfilePage = () => {
     const load = async () => {
       setLoading(true);
       setError('');
-      const token = localStorage.getItem('token');
+      const token = getAccessToken();
       if (!token) {
         navigate('/', { replace: true });
         return;
@@ -116,7 +117,7 @@ export const ProfilePage = () => {
 
   const handleSaveProfile = async (event: React.FormEvent) => {
     event.preventDefault();
-    const token = localStorage.getItem('token');
+    const token = getAccessToken();
     if (!token || savingProfile) return;
 
     const firstName = profileDraft.firstName.trim();
@@ -144,7 +145,7 @@ export const ProfilePage = () => {
 
   const handleChangePassword = async (event: React.FormEvent) => {
     event.preventDefault();
-    const token = localStorage.getItem('token');
+    const token = getAccessToken();
     if (!token || savingPassword) return;
 
     if (!/^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=\S+$).{8,255}$/.test(passwordDraft.newPassword)) {
@@ -192,6 +193,10 @@ export const ProfilePage = () => {
   };
 
   const handleStartPasswordChange = () => {
+    if (isKeycloakAuthenticated()) {
+      void updateKeycloakPassword();
+      return;
+    }
     setIsEditing(false);
     setError('');
     setPasswordMessage('');
@@ -213,8 +218,8 @@ export const ProfilePage = () => {
     setError('');
   };
 
-  const handleLogout = () => {
-    signOut();
+  const handleLogout = async () => {
+    await signOut();
     navigate('/', { replace: true });
   };
 
@@ -238,7 +243,7 @@ export const ProfilePage = () => {
 
   const handleSaveApplication = async (event: React.FormEvent, application: Application) => {
     event.preventDefault();
-    const token = localStorage.getItem('token');
+    const token = getAccessToken();
     if (!token || savingApplication) return;
 
     const name = applicationDraft.name.trim();
@@ -291,7 +296,7 @@ export const ProfilePage = () => {
 
   const handleDeleteApplication = async (id: number) => {
     if (!window.confirm(t('Вы уверены, что хотите удалить заявку?'))) return;
-    const token = localStorage.getItem('token');
+    const token = getAccessToken();
     if (!token) {
       navigate('/');
       return;

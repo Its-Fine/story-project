@@ -4,7 +4,7 @@ import { DecorLines } from '../../components/Layout/DecorLines';
 import { Button } from '../../components/UI/Button';
 import { Notification } from '../../components/UI/Notification';
 import { adminApi, AdminApplication, AdminUser, AdminWork } from '../../api/admin';
-import { authApi } from '../../api/auth';
+import { getAccessToken } from '../../auth/keycloak';
 import { getRoleLabel } from '../../utils/roleLabels';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -12,7 +12,7 @@ import css from './index.module.scss';
 
 type AdminTab = 'overview' | 'applications' | 'users';
 
-const getToken = () => localStorage.getItem('token');
+const getToken = () => getAccessToken();
 
 const saveBlob = (blob: Blob, fileName: string) => {
   const url = URL.createObjectURL(blob);
@@ -61,11 +61,9 @@ export const AdminPage = () => {
   const handleLogout = async () => {
     if (loggingOut) return;
     setLoggingOut(true);
-    const token = getToken();
     try {
-      if (token) await authApi.logout(token);
+      await signOut();
     } finally {
-      signOut();
       navigate('/', { replace: true });
     }
   };
