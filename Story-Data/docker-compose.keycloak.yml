@@ -47,5 +47,25 @@ services:
     restart: unless-stopped
     networks: [app, data]
 
+  story-back:
+    environment:
+      STORY_OIDC_ENABLED: "true"
+      STORY_OIDC_ISSUER_URI: http://localhost:8080/realms/story
+      STORY_OIDC_JWK_SET_URI: http://keycloak:8080/realms/story/protocol/openid-connect/certs
+      STORY_OIDC_AUDIENCE: story-back
+    depends_on:
+      keycloak:
+        condition: service_healthy
+
+  story-admin:
+    environment:
+      STORY_OIDC_ENABLED: "true"
+      STORY_OIDC_ISSUER_URI: http://localhost:8080/realms/story
+      STORY_OIDC_JWK_SET_URI: http://keycloak:8080/realms/story/protocol/openid-connect/certs
+      STORY_OIDC_AUDIENCE: story-admin
+    depends_on:
+      keycloak:
+        condition: service_healthy
+
 volumes:
   story-keycloak-postgresql-volume:
