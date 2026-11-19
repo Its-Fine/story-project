@@ -39,7 +39,8 @@ mvn -pl story-admin -am verify
 ### Требования
 
 - Установленный и запущенный Docker Desktop с Docker Compose.
-- Свободные порты `3000`, `5432`, `8000`, `8001`, `8002`, `9000` и `9001`.
+- Свободные локальные порты `3000`, `5432`, `9000` и `9001`. Порты Java-сервисов
+  8000–8002 доступны только внутри Docker-сетей.
 
 ### 1. Подготовьте настройки
 
@@ -83,14 +84,16 @@ docker compose up -d --build
 | Что | Адрес |
 |---|---|
 | Веб-приложение | <http://localhost:3000> |
-| Swagger API | <http://localhost:8000/swagger-ui/index.html> |
-| Swagger Admin API | <http://localhost:8002/swagger-ui/index.html> |
+| Gateway health | <http://localhost:3000/gateway/health> |
 | PostgreSQL | `localhost:5432` (подключаться через pgAdmin/DBeaver; это не сайт и в браузере не открывается) |
 | MinIO API / консоль | `localhost:9000` / <http://localhost:9001> |
 
 Фронтенд перенаправляет авторизацию в `story-auth`, административные запросы и
 отчёты — в `story-admin`, остальные API-запросы — в `story-back`. Обычно
 достаточно открыть только `http://localhost:3000`.
+
+Прямой доступ с хоста к портам 8000–8002 закрыт. Таблица маршрутов и сетей:
+[docs/architecture/api-gateway.md](docs/architecture/api-gateway.md).
 
 ### 4. Войдите или зарегистрируйтесь
 
