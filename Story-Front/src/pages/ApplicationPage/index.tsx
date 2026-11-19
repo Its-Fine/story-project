@@ -5,6 +5,7 @@ import { Notification } from '../../components/UI/Notification';
 import { applicationsApi } from '../../api/applications';
 import { storageApi } from '../../api/storage';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { getAccessToken } from '../../auth/keycloak';
 import css from './index.module.scss';
 
 interface Nomination {
@@ -36,7 +37,7 @@ interface StoredApplicationDraft {
 }
 
 const getDraftOwner = () => {
-  const token = localStorage.getItem('token');
+  const token = getAccessToken();
   if (!token) return 'anonymous';
 
   try {
@@ -76,7 +77,7 @@ export const ApplicationPage = () => {
   });
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const token = getAccessToken();
     if (!token) {
       navigate('/');
     }
@@ -323,7 +324,7 @@ export const ApplicationPage = () => {
   };
 
   const uploadFiles = async (appId: number): Promise<boolean> => {
-    const token = localStorage.getItem('token');
+    const token = getAccessToken();
     if (!token) {
       navigate('/');
       return false;
@@ -355,7 +356,7 @@ export const ApplicationPage = () => {
     e.preventDefault();
     if (!validateForm()) return;
 
-    const token = localStorage.getItem('token');
+    const token = getAccessToken();
     if (!token) {
       navigate('/');
       return;

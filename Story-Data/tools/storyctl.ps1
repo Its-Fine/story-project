@@ -176,6 +176,9 @@ switch ($Command) {
             STORY_AUTH_DB_PASSWORD = New-RandomSecret
             STORY_BACK_DB_PASSWORD = New-RandomSecret
             STORY_ADMIN_DB_PASSWORD = New-RandomSecret
+            KEYCLOAK_DB_PASSWORD = New-RandomSecret
+            KEYCLOAK_ADMIN_USERNAME = 'keycloak-admin'
+            KEYCLOAK_ADMIN_PASSWORD = New-RandomSecret
             MINIO_ROOT_USER = 'story_minio'
             MINIO_ROOT_PASSWORD = New-RandomSecret
             MINIO_MC_BUCKET = 'story-works'

@@ -27,6 +27,8 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtFilter;
+    private final OidcBearerTokenResolver oidcBearerTokenResolver;
+    private final OidcResourceServerSupport oidcResourceServerSupport;
     private final StoryProperties storyProperties;
 
     @Bean
@@ -51,6 +53,14 @@ public class SecurityConfig {
                 auth.anyRequest().authenticated();
             })
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+
+        if (storyProperties.getOidc().isEnabled()) {
+            http.oauth2ResourceServer(oauth2 -> oauth2
+                    .bearerTokenResolver(oidcBearerTokenResolver)
+                    .jwt(jwt -> jwt
+                            .decoder(oidcResourceServerSupport.jwtDecoder())
+                            .jwtAuthenticationConverter(oidcResourceServerSupport.authenticationConverter())));
+        }
 
         return http.build();
     }

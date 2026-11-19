@@ -14,6 +14,8 @@ public interface AuthUserRepository extends JpaRepository<AuthUser, Long> {
 
     Optional<AuthUser> findByEmail(String email);
 
+    Optional<AuthUser> findByOidcIssuerAndOidcSubject(String oidcIssuer, String oidcSubject);
+
     @Modifying
     @Query(value = """
             INSERT INTO user_roles (user_id, role_name)

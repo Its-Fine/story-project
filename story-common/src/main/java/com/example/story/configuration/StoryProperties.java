@@ -38,6 +38,8 @@ public class StoryProperties {
     private Cors cors = new Cors();
     @Valid
     private Bootstrap bootstrap = new Bootstrap();
+    @Valid
+    private Oidc oidc = new Oidc();
 
     @Getter @Setter
     public static class Jwt {
@@ -109,5 +111,26 @@ public class StoryProperties {
         private boolean contestsEnabled;
         @NotBlank
         private String contestsResource = "classpath:bootstrap/contests.json";
+    }
+
+    @Getter @Setter
+    public static class Oidc {
+        private boolean enabled;
+        private String issuerUri;
+        private String jwkSetUri;
+        private String audience;
+
+        @AssertTrue(message = "story.oidc issuer-uri, jwk-set-uri and audience are required when OIDC is enabled")
+        public boolean isConfigurationValid() {
+            return !enabled || (
+                    hasText(issuerUri)
+                    && hasText(jwkSetUri)
+                    && hasText(audience)
+            );
+        }
+
+        private boolean hasText(String value) {
+            return value != null && !value.isBlank();
+        }
     }
 }

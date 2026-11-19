@@ -1,0 +1,85 @@
+services:
+  keycloak-postgresql:
+    image: postgres:16-alpine
+    container_name: story-keycloak-postgresql
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?KEYCLOAK_DB_PASSWORD is required}
+    volumes:
+      - story-keycloak-postgresql-volume:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak -d keycloak"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+    networks: [data]
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.8.2
+    container_name: story-keycloak
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-postgresql:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?KEYCLOAK_DB_PASSWORD is required}
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME:?KEYCLOAK_ADMIN_USERNAME is required}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?KEYCLOAK_ADMIN_PASSWORD is required}
+      KC_HEALTH_ENABLED: "true"
+      KC_METRICS_ENABLED: "true"
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - ./keycloak/import:/opt/keycloak/data/import:ro
+    depends_on:
+      keycloak-postgresql:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - "{ printf 'HEAD /health/ready HTTP/1.0\r\n\r\n' >&0; grep 'HTTP/1.0 200'; } 0<>/dev/tcp/127.0.0.1/9000"
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    restart: unless-stopped
+    networks: [app, data]
+
+  story-back:
+    environment:
+      STORY_OIDC_ENABLED: "true"
+      STORY_OIDC_ISSUER_URI: http://localhost:8080/realms/story
+      STORY_OIDC_JWK_SET_URI: http://keycloak:8080/realms/story/protocol/openid-connect/certs
+      STORY_OIDC_AUDIENCE: story-back
+    depends_on:
+      keycloak:
+        condition: service_healthy
+
+  story-admin:
+    environment:
+      STORY_OIDC_ENABLED: "true"
+      STORY_OIDC_ISSUER_URI: http://localhost:8080/realms/story
+      STORY_OIDC_JWK_SET_URI: http://keycloak:8080/realms/story/protocol/openid-connect/certs
+      STORY_OIDC_AUDIENCE: story-admin
+    depends_on:
+      keycloak:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ../Story-Front
+      args:
+        REACT_APP_API_URL: /api/v1
+        REACT_APP_AUTH_URL: /api/v1
+        REACT_APP_KEYCLOAK_ENABLED: "true"
+        REACT_APP_KEYCLOAK_URL: ${STORY_KEYCLOAK_PUBLIC_URL:-http://localhost:8080}
+        REACT_APP_KEYCLOAK_REALM: story
+        REACT_APP_KEYCLOAK_CLIENT_ID: story-frontend
+    depends_on:
+      keycloak:
+        condition: service_healthy
+
+volumes:
+  story-keycloak-postgresql-volume:

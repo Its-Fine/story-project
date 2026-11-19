@@ -1,11 +1,20 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { authApi } from '../api/auth';
+import {
+  getAccessToken,
+  getKeycloakRole,
+  initializeKeycloak,
+  isKeycloakAuthenticated,
+  loginWithKeycloak,
+  logoutFromKeycloak,
+} from '../auth/keycloak';
 
 interface AuthContextValue {
   role: string | null;
   initialized: boolean;
   signIn: (accessToken: string) => Promise<string>;
-  signOut: () => void;
+  signInWithKeycloak: () => Promise<void>;
+  signOut: () => Promise<void>;
   refreshSession: () => Promise<void>;
 }
 
@@ -16,7 +25,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [initialized, setInitialized] = useState(false);
 
   const refreshSession = useCallback(async () => {
-    const token = localStorage.getItem('token');
+    const keycloakAuthenticated = await initializeKeycloak();
+    if (keycloakAuthenticated) {
+      localStorage.removeItem('token');
+      setRole(getKeycloakRole());
+      setInitialized(true);
+      return;
+    }
+
+    const token = getAccessToken();
     if (!token) {
       setRole(null);
       setInitialized(true);
@@ -63,14 +80,27 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, []);
 
-  const signOut = useCallback(() => {
+  const signInWithKeycloak = useCallback(async () => {
+    await loginWithKeycloak();
+  }, []);
+
+  const signOut = useCallback(async () => {
+    const keycloakSession = isKeycloakAuthenticated();
+    const token = getAccessToken();
     localStorage.removeItem('token');
     setRole(null);
+
+    if (keycloakSession) {
+      await logoutFromKeycloak();
+      return;
+    }
+
+    if (token) await authApi.logout(token);
   }, []);
 
   const value = useMemo(
-    () => ({ role, initialized, signIn, signOut, refreshSession }),
-    [role, initialized, signIn, signOut, refreshSession]
+    () => ({ role, initialized, signIn, signInWithKeycloak, signOut, refreshSession }),
+    [role, initialized, signIn, signInWithKeycloak, signOut, refreshSession]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

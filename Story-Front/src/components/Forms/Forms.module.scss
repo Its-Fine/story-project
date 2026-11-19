@@ -6,6 +6,22 @@
   gap: 20px;
 }
 
+.authDivider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: $text-light;
+  font-size: 12px;
+
+  &::before,
+  &::after {
+    content: '';
+    height: 1px;
+    flex: 1;
+    background: $border;
+  }
+}
+
 .formRow {
   display: flex;
   gap: 30px;

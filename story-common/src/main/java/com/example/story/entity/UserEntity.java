@@ -34,6 +34,12 @@ public class UserEntity {
     @Column(name = "banned", nullable = false)
     private Boolean banned = false;
 
+    @Column(name = "oidc_issuer", length = 255)
+    private String oidcIssuer;
+
+    @Column(name = "oidc_subject", length = 255)
+    private String oidcSubject;
+
     @Column(name = "first_name", nullable = false)
     private String firstName;
 

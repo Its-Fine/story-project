@@ -6,6 +6,7 @@ import { authApi } from '../../api/auth';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import css from './Forms.module.scss';
+import { isKeycloakEnabled, updateKeycloakPassword } from '../../auth/keycloak';
 
 interface SignInFormProps {
   showNotification: (message: string, type?: 'success' | 'error') => void;
@@ -13,7 +14,7 @@ interface SignInFormProps {
 
 export const SignInForm = ({ showNotification }: SignInFormProps) => {
   const navigate = useNavigate();
-  const { signIn } = useAuth();
+  const { signIn, signInWithKeycloak } = useAuth();
   const { t } = useLanguage();
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [errors, setErrors] = useState({ email: '', password: '' });
@@ -35,6 +36,22 @@ export const SignInForm = ({ showNotification }: SignInFormProps) => {
     if (!formData.password) nextErrors.password = t('Введите пароль');
     setErrors(nextErrors);
     return !nextErrors.email && !nextErrors.password;
+  };
+
+  const handleKeycloakSignIn = async () => {
+    try {
+      await signInWithKeycloak();
+    } catch {
+      showNotification(t('Не удалось открыть вход через Keycloak'), 'error');
+    }
+  };
+
+  const handlePasswordRecovery = async () => {
+    try {
+      await updateKeycloakPassword();
+    } catch {
+      showNotification(t('Не удалось открыть восстановление пароля'), 'error');
+    }
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -65,6 +82,14 @@ export const SignInForm = ({ showNotification }: SignInFormProps) => {
 
   return (
     <form className={css.form} onSubmit={handleSubmit}>
+      {isKeycloakEnabled() && (
+        <>
+          <Button type="button" variant="primary" onClick={() => void handleKeycloakSignIn()}>
+            {t('Войти через Keycloak')}
+          </Button>
+          <div className={css.authDivider}><span>{t('или')}</span></div>
+        </>
+      )}
       <Input
         label={t('Email')}
         type="email"
@@ -86,7 +111,11 @@ export const SignInForm = ({ showNotification }: SignInFormProps) => {
       <div className={css.forgotPassword}>
         <a href="#forgot-password" onClick={(event) => {
           event.preventDefault();
-          showNotification(t('Функция восстановления пароля будет доступна позже'), 'error');
+          if (isKeycloakEnabled()) {
+            void handlePasswordRecovery();
+          } else {
+            showNotification(t('Функция восстановления пароля будет доступна позже'), 'error');
+          }
         }}>
           {t('Забыли пароль?')}
         </a>

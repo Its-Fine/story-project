@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import css from './Header.module.scss';
 import { getRoleLabel } from '../../utils/roleLabels';
-import { authApi } from '../../api/auth';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 
@@ -20,11 +19,9 @@ export const Header = ({ role }: HeaderProps) => {
   const handleLogout = async () => {
     if (loggingOut) return;
     setLoggingOut(true);
-    const token = localStorage.getItem('token');
     try {
-      if (token) await authApi.logout(token);
+      await signOut();
     } finally {
-      signOut();
       navigate('/', { replace: true });
       setLoggingOut(false);
     }

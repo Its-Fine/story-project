@@ -127,6 +127,9 @@ case "$command_name" in
     set_missing_value STORY_AUTH_DB_PASSWORD "$(random_secret)"
     set_missing_value STORY_BACK_DB_PASSWORD "$(random_secret)"
     set_missing_value STORY_ADMIN_DB_PASSWORD "$(random_secret)"
+    set_missing_value KEYCLOAK_DB_PASSWORD "$(random_secret)"
+    set_missing_value KEYCLOAK_ADMIN_USERNAME keycloak-admin
+    set_missing_value KEYCLOAK_ADMIN_PASSWORD "$(random_secret)"
     set_missing_value MINIO_ROOT_USER story_minio
     set_missing_value MINIO_ROOT_PASSWORD "$(random_secret)"
     set_missing_value MINIO_MC_BUCKET story-works

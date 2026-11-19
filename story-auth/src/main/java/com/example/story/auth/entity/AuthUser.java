@@ -36,6 +36,12 @@ public class AuthUser {
     @Column(name = "banned", nullable = false)
     private Boolean banned = false;
 
+    @Column(name = "oidc_issuer", length = 255)
+    private String oidcIssuer;
+
+    @Column(name = "oidc_subject", length = 255)
+    private String oidcSubject;
+
     @Column(name = "closed_access", nullable = false)
     private Boolean closedAccess = false;
 

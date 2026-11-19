@@ -16,6 +16,12 @@ spring:
     open-in-view: false
 
 story:
+  oidc:
+    enabled: ${STORY_OIDC_ENABLED:false}
+    issuer-uri: ${STORY_OIDC_ISSUER_URI:http://localhost:8080/realms/story}
+    jwk-set-uri: ${STORY_OIDC_JWK_SET_URI:http://keycloak:8080/realms/story/protocol/openid-connect/certs}
+    audience: ${STORY_OIDC_AUDIENCE:story-admin}
+
   jwt:
     secret: ${STORY_JWT_SECRET}
     expiration-access: ${STORY_JWT_EXPIRATION_ACCESS:15m}
