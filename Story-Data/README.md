@@ -71,8 +71,10 @@ Starting September 2026, MinIO Inc. removed official Docker images (`minio/minio
 
 ```bash
 docker compose down          # Stop services
-docker compose down -v       # Stop and delete all data (volumes)
 ```
+
+Do not use `down -v` during normal maintenance: it deletes PostgreSQL and MinIO
+volumes. Use the safe maintenance utility described below.
 
 ## Logs
 
@@ -80,6 +82,21 @@ docker compose down -v       # Stop and delete all data (volumes)
 docker compose logs -f              # All services
 docker compose logs -f story-auth   # Single service
 ```
+
+## Safe maintenance utility
+
+The cross-platform helper validates required variables and supports `status`,
+`logs`, `restart`, and single-service `update` without deleting volumes. It can
+also create an env file while preserving every existing non-empty secret.
+
+```powershell
+.\tools\storyctl.ps1 init-env
+.\tools\storyctl.ps1 check-config
+.\tools\storyctl.ps1 status
+```
+
+Linux and Docker-over-SSH examples are in
+[`docs/maintenance.md`](../docs/maintenance.md).
 
 ## Local Development
 
