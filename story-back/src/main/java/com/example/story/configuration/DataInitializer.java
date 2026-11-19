@@ -22,7 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.io.IOException;
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -65,15 +64,21 @@ public class DataInitializer implements ApplicationRunner {
         boolean adminExists = userRepository.findByEmail(email).isPresent();
 
         if (!adminExists) {
+            if (!StringUtils.hasText(storyProperties.getAdmin().getFirstName())
+                    || !StringUtils.hasText(storyProperties.getAdmin().getLastName())
+                    || storyProperties.getAdmin().getBirthDate() == null) {
+                throw new IllegalStateException(
+                        "Bootstrap admin first name, last name and birth date must be configured");
+            }
             UserEntity admin = new UserEntity();
             admin.setEmail(email);
             admin.setPassword(passwordEncoder.encode(password));
             admin.setRole(StoryProperties.Roles.ADMIN.toString());
             admin.setClosedAccess(true);
             admin.setBanned(false);
-            admin.setFirstName("Admin");
-            admin.setLastName("User");
-            admin.setBirthDate(LocalDate.of(2001, 11, 4));
+            admin.setFirstName(storyProperties.getAdmin().getFirstName());
+            admin.setLastName(storyProperties.getAdmin().getLastName());
+            admin.setBirthDate(storyProperties.getAdmin().getBirthDate());
             admin.setConsent(true);
             admin.setParentConsent(true);
 
