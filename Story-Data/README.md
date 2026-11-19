@@ -57,11 +57,14 @@ administrator and contest creation are explicit one-off operations documented in
 | Service | Port | Description |
 |---------|------|-------------|
 | **frontend** | 3000 | React SPA (nginx) |
-| **story-auth** | 8001 | Authentication service (JWT, refresh-cookie) |
-| **story-back** | 8000 | Main backend API |
-| **story-admin** | 8002 | Administrative API and reports |
-| **postgresql** | 5432 | PostgreSQL 16 database |
-| **minio** | 9000/9001 | S3-compatible object storage (API/Console) |
+| **story-auth** | internal 8001 | Authentication service (JWT, refresh-cookie) |
+| **story-back** | internal 8000 | Main backend API |
+| **story-admin** | internal 8002 | Administrative API and reports |
+| **postgresql** | localhost 5432 | PostgreSQL 16 database |
+| **minio** | localhost 9000/9001 | S3-compatible object storage (API/Console) |
+
+Browser API traffic enters only through frontend Nginx on port 3000. See
+[`docs/architecture/api-gateway.md`](../docs/architecture/api-gateway.md).
 
 ### Minio Note
 

@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 @RestController
-@PreAuthorize("hasRole('PARTICIPANT')")
 @RequestMapping("/api/v1/works")
 @RequiredArgsConstructor
 public class WorksController {
@@ -23,6 +22,7 @@ public class WorksController {
     private final EventService eventService;
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAuthority(T(com.example.story.security.Permissions).WORK_WRITE_OWN)")
     public ResponseEntity<?> post(@RequestParam Long appId, @RequestParam("file") MultipartFile file) {
         try {
             if (eventService.getClosed()) return ResponseEntity.status(HttpStatus.GONE).build();
@@ -33,6 +33,7 @@ public class WorksController {
     }
 
     @GetMapping()
+    @PreAuthorize("hasAuthority(T(com.example.story.security.Permissions).WORK_READ_OWN)")
     public ResponseEntity<?> getAllByAppId(@RequestParam Long appId) {
         try {
             return ResponseEntity.ok().body(worksService.obtainAllInfo(appId));
@@ -42,6 +43,7 @@ public class WorksController {
     }
 
     @GetMapping("/{workId}")
+    @PreAuthorize("hasAuthority(T(com.example.story.security.Permissions).WORK_READ_OWN)")
     public ResponseEntity<?> getByWorkId(@PathVariable Long workId) {
         try {
             return ResponseEntity.ok().body(worksService.obtainInfo(workId));
@@ -51,6 +53,7 @@ public class WorksController {
     }
 
     @GetMapping("/{workId}/file")
+    @PreAuthorize("hasAuthority(T(com.example.story.security.Permissions).WORK_READ_OWN)")
     public ResponseEntity<?> getFileByWorkId(@PathVariable Long workId) {
         try {
             LoadedFile file = worksService.obtainData(workId);
@@ -61,6 +64,7 @@ public class WorksController {
     }
 
     @DeleteMapping("/{workId}")
+    @PreAuthorize("hasAuthority(T(com.example.story.security.Permissions).WORK_WRITE_OWN)")
     public ResponseEntity<?> deleteByWorkId(@PathVariable Long workId) {
         try {
             if (eventService.getClosed()) return ResponseEntity.status(HttpStatus.GONE).build();

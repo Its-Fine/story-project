@@ -14,7 +14,6 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@PreAuthorize("hasRole('PARTICIPANT')")
 @RequestMapping("/api/v1/applications")
 @RequiredArgsConstructor
 public class ApplicationsController {
@@ -23,6 +22,7 @@ public class ApplicationsController {
     private final EventService eventService;
 
     @PostMapping()
+    @PreAuthorize("hasAuthority(T(com.example.story.security.Permissions).APPLICATION_WRITE_OWN)")
     public ResponseEntity<?> post(@RequestParam Long conId, @RequestBody @Validated(Group.Create.class) RequestApplicationDto dto) {
         try {
             if (eventService.isApplicationsClosed()) {
@@ -36,6 +36,7 @@ public class ApplicationsController {
     }
 
     @GetMapping()
+    @PreAuthorize("hasAuthority(T(com.example.story.security.Permissions).APPLICATION_READ_OWN)")
     public ResponseEntity<?> getAll() {
         try {
             return ResponseEntity.ok().body(applicationService.obtainAll());
@@ -45,6 +46,7 @@ public class ApplicationsController {
     }
 
     @GetMapping("/{appId}")
+    @PreAuthorize("hasAuthority(T(com.example.story.security.Permissions).APPLICATION_READ_OWN)")
     public ResponseEntity<?> getByAppId(@PathVariable Long appId) {
         try {
             return ResponseEntity.ok().body(applicationService.obtain(appId));
@@ -54,6 +56,7 @@ public class ApplicationsController {
     }
 
     @PutMapping("/{appId}")
+    @PreAuthorize("hasAuthority(T(com.example.story.security.Permissions).APPLICATION_WRITE_OWN)")
     public ResponseEntity<?> putByAppId(@PathVariable Long appId, @RequestBody @Validated(Group.Update.class) RequestApplicationDto dto) {
         try {
             if (eventService.getClosed()) {
@@ -70,6 +73,7 @@ public class ApplicationsController {
     }
 
     @DeleteMapping("/{appId}")
+    @PreAuthorize("hasAuthority(T(com.example.story.security.Permissions).APPLICATION_WRITE_OWN)")
     public ResponseEntity<?> deleteByAppId(@PathVariable Long appId) {
         try {
             if (eventService.getClosed()) return ResponseEntity.status(HttpStatus.GONE).build();

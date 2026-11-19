@@ -10,11 +10,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.ArrayList;
 
 @Component
 @RequiredArgsConstructor
@@ -38,10 +40,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if (email != null) {
                 userRepository.findByEmail(email)
                         .filter(user -> !Boolean.TRUE.equals(user.getBanned()))
-                        .filter(user -> user.getRole() != null && !user.getRole().isBlank())
                         .ifPresent(user -> {
-                            // JWT role claims can outlive a role change. Use current database permissions.
-                            var details = User.withUsername(user.getEmail()).password("").roles(user.getRole()).build();
+                            var authorities = new ArrayList<SimpleGrantedAuthority>();
+                            userRepository.findRoleNamesByEmail(user.getEmail()).stream()
+                                    .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
+                                    .forEach(authorities::add);
+                            userRepository.findPermissionNamesByEmail(user.getEmail()).stream()
+                                    .map(SimpleGrantedAuthority::new)
+                                    .forEach(authorities::add);
+                            if (authorities.isEmpty()) {
+                                return;
+                            }
+                            var details = User.withUsername(user.getEmail())
+                                    .password("")
+                                    .authorities(authorities)
+                                    .build();
                             var authentication = new UsernamePasswordAuthenticationToken(
                                     details, null, details.getAuthorities());
                             authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));

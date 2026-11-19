@@ -3,6 +3,7 @@ package com.example.story.controller.admin;
 import com.example.story.dto.errors.ResponseErrorDto;
 import com.example.story.dto.users.RequestUserAccessDto;
 import com.example.story.dto.users.RequestUserPasswordDto;
+import com.example.story.dto.users.RequestUserRolesDto;
 import com.example.story.service.admin.AdminUsersService;
 
 import lombok.RequiredArgsConstructor;
@@ -13,7 +14,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAuthority(T(com.example.story.security.Permissions).USER_MANAGE)")
 @RequestMapping("/api/v1/admin/users")
 @RequiredArgsConstructor
 public class AdminUsersController {
@@ -67,6 +68,18 @@ public class AdminUsersController {
     {
         try {
             adminUsersService.updateUserAccess(userId, dto);
+            return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ResponseErrorDto(e.getMessage()));
+        }
+    }
+
+    @PutMapping("/{userId}/roles")
+    @PreAuthorize("hasAuthority(T(com.example.story.security.Permissions).ROLE_MANAGE)")
+    public ResponseEntity<?> putRolesByUserId(@PathVariable Long userId,
+                                              @RequestBody @Validated RequestUserRolesDto dto) {
+        try {
+            adminUsersService.updateUserRoles(userId, dto);
             return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ResponseErrorDto(e.getMessage()));

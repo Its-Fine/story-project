@@ -14,7 +14,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 
 @RestController
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAuthority(T(com.example.story.security.Permissions).APPLICATION_READ_ANY)")
 @RequestMapping("/api/v1/admin/applications")
 @RequiredArgsConstructor
 public class AdminApplicationsController {
@@ -53,6 +53,7 @@ public class AdminApplicationsController {
     }
 
     @PatchMapping("/{appId}/status")
+    @PreAuthorize("hasAuthority(T(com.example.story.security.Permissions).APPLICATION_MODERATE)")
     public ResponseEntity<?> updateStatus(@PathVariable Long appId,
                                           @RequestBody @Validated RequestApplicationStatusDto dto) {
         try {
