@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -59,6 +60,7 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     long countUsersWithRole(@Param("roleName") String roleName);
 
     @Modifying
+    @Transactional
     @Query(value = """
             INSERT INTO user_roles (user_id, role_name)
             VALUES (:userId, :roleName)
@@ -67,10 +69,12 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     void assignRole(@Param("userId") Long userId, @Param("roleName") String roleName);
 
     @Modifying
+    @Transactional
     @Query(value = "DELETE FROM user_roles WHERE user_id = :userId", nativeQuery = true)
     void removeAllRoles(@Param("userId") Long userId);
 
     @Modifying
+    @Transactional
     @Query(value = """
             INSERT INTO role_change_audit
                 (actor_user_id, target_user_id, previous_roles, new_roles)
