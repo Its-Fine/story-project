@@ -30,7 +30,6 @@ import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -137,43 +136,38 @@ class StoryApplicationTests {
     }
 
     @Test
-    void adminPermissionFollowsDatabaseRoleEvenWithAnOldToken() throws Exception {
-        String adminToken = JwtTokens.token("ACCESS", "ADMIN");
-        mvc.perform(get("/api/v1/admin/users/count").header("Authorization", "Bearer " + adminToken)).andExpect(status().isForbidden());
-        changeRole(user, "ADMIN");
-        mvc.perform(get("/api/v1/admin/users/count").header("Authorization", "Bearer " + access)).andExpect(status().isOk());
-        changeRole(user, "PARTICIPANT");
-        mvc.perform(get("/api/v1/admin/users/count").header("Authorization", "Bearer " + adminToken)).andExpect(status().isForbidden());
+    void participantPermissionsFollowCurrentDatabaseRoles() throws Exception {
+        mvc.perform(get("/api/v1/applications")
+                        .header("Authorization", "Bearer " + access))
+                .andExpect(status().isOk());
+
+        // An access token alone cannot restore database permissions.
+        users.removeAllRoles(user.getId());
+        mvc.perform(get("/api/v1/applications")
+                        .header("Authorization", "Bearer " + access))
+                .andExpect(status().isUnauthorized());
+
+        users.assignRole(user.getId(), "PARTICIPANT");
+        mvc.perform(get("/api/v1/applications")
+                        .header("Authorization", "Bearer " + access))
+                .andExpect(status().isOk());
     }
 
-    @Test
-    void adminCanPersistGlobalClosureAndClosedEventRejectsNewApplications() throws Exception {
+        @Test
+    void closedEventRejectsNewApplicationsButKeepsStatusReadable() throws Exception {
         mvc.perform(get("/api/v1/event/status").header("Authorization", "Bearer " + access))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.close").value(false));
 
-        changeRole(user, "ADMIN");
-        user.setClosedAccess(true);
-        users.saveAndFlush(user);
-
-        mvc.perform(put("/api/v1/admin/event/status")
-                        .header("Authorization", "Bearer " + access)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"close\":true}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.close").value(true));
-
-        assertThat(eventSettings.findById((short) 1))
-                .isPresent()
-                .get()
-                .extracting(EventSettingsEntity::getApplicationsClosed)
-                .isEqualTo(true);
+        // The admin status-changing endpoint now belongs to story-admin.
+        // The participant service is tested here against the persisted state.
+        EventSettingsEntity settings = eventSettings.findById((short) 1).orElseThrow();
+        settings.setApplicationsClosed(true);
+        eventSettings.saveAndFlush(settings);
 
         mvc.perform(get("/api/v1/event/status").header("Authorization", "Bearer " + access))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.close").value(true));
-
-        changeRole(user, "PARTICIPANT");
 
         mvc.perform(post("/api/v1/applications")
                         .param("conId", "1")
@@ -193,9 +187,9 @@ class StoryApplicationTests {
                 .andExpect(jsonPath("$.message").value("Приём заявок закрыт. Новые заявки временно не принимаются."));
     }
 
-    @Test
+        @Test
     @Transactional
-    void adminCanModerateApplicationAndRateWorkAndParticipantSeesResult() throws Exception {
+    void participantSeesPersistedModerationAndWorkRating() throws Exception {
         ContestEntity contest = contestRepository.findAll().getFirst();
 
         ApplicationEntity application = new ApplicationEntity();
@@ -206,6 +200,9 @@ class StoryApplicationTests {
         application.setIsCurator(false);
         application.setUserEntity(user);
         application.setContestEntity(contest);
+        application.setStatus("REJECTED");
+        application.setRejectionReason("Incomplete description");
+        application.setReviewedBy(JwtTokens.EMAIL);
         application = applicationRepository.saveAndFlush(application);
 
         WorkEntity work = new WorkEntity();
@@ -213,54 +210,26 @@ class StoryApplicationTests {
         work.setFileName("moderation-test-storage-key");
         work.setFileSize(1024);
         work.setApplicationEntity(application);
-        work = workRepository.saveAndFlush(work);
+        work.setRate(87);
+        work.setIsRated(true);
+        work.setRatedBy(JwtTokens.EMAIL);
+        workRepository.saveAndFlush(work);
 
-        changeRole(user, "ADMIN");
+        // Admin write operations are tested in story-admin; this verifies
+        // the participant-facing read contract from persisted data.
+        entityManager.flush();
         entityManager.clear();
 
-        mvc.perform(patch("/api/v1/admin/applications/{appId}/status", application.getId())
-                        .header("Authorization", "Bearer " + access)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"status\":\"REJECTED\",\"rejectionReason\":\"Incomplete description\"}"))
+        mvc.perform(get("/api/v1/applications/{appId}", application.getId())
+                        .header("Authorization", "Bearer " + access))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("REJECTED"))
                 .andExpect(jsonPath("$.rejectionReason").value("Incomplete description"))
-                .andExpect(jsonPath("$.reviewedBy").value(JwtTokens.EMAIL));
-
-        mvc.perform(put("/api/v1/admin/works/{workId}/rating", work.getId())
-                        .header("Authorization", "Bearer " + access)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"rate\":101}"))
-                .andExpect(status().isBadRequest());
-
-        mvc.perform(put("/api/v1/admin/works/{workId}/rating", Long.MAX_VALUE)
-                        .header("Authorization", "Bearer " + access)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"rate\":87}"))
-                .andExpect(status().isNotFound());
-
-        mvc.perform(put("/api/v1/admin/works/{workId}/rating", work.getId())
-                        .header("Authorization", "Bearer " + access)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"rate\":87}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.rate").value(87))
-                .andExpect(jsonPath("$.isRated").value(true))
-                .andExpect(jsonPath("$.ratedBy").value(JwtTokens.EMAIL));
-
-        UserEntity participant = users.findById(user.getId()).orElseThrow();
-        changeRole(participant, "PARTICIPANT");
-        entityManager.clear();
-
-        mvc.perform(get("/api/v1/applications").header("Authorization", "Bearer " + access))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].status").value("REJECTED"))
-                .andExpect(jsonPath("$[0].rejectionReason").value("Incomplete description"))
-                .andExpect(jsonPath("$[0].works[0].rate").value(87))
-                .andExpect(jsonPath("$[0].works[0].isRated").value(true));
+                .andExpect(jsonPath("$.works[0].rate").value(87))
+                .andExpect(jsonPath("$.works[0].isRated").value(true));
     }
 
-    private void changeRole(UserEntity target, String role) {
+        private void changeRole(UserEntity target, String role) {
         target.setRole(role);
         users.saveAndFlush(target);
         users.removeAllRoles(target.getId());
