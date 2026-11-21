@@ -153,7 +153,7 @@ class StoryApplicationTests {
                 .andExpect(status().isOk());
     }
 
-        @Test
+    @Test
     void closedEventRejectsNewApplicationsButKeepsStatusReadable() throws Exception {
         mvc.perform(get("/api/v1/event/status").header("Authorization", "Bearer " + access))
                 .andExpect(status().isOk())
@@ -187,7 +187,7 @@ class StoryApplicationTests {
                 .andExpect(jsonPath("$.message").value("Приём заявок закрыт. Новые заявки временно не принимаются."));
     }
 
-        @Test
+    @Test
     @Transactional
     void participantSeesPersistedModerationAndWorkRating() throws Exception {
         ContestEntity contest = contestRepository.findAll().getFirst();
@@ -215,7 +215,7 @@ class StoryApplicationTests {
         work.setRatedBy(JwtTokens.EMAIL);
         workRepository.saveAndFlush(work);
 
-        // Admin write operations are tested in story-admin; this verifies
+        // Administrative write routes belong to story-admin; verify only
         // the participant-facing read contract from persisted data.
         entityManager.flush();
         entityManager.clear();
@@ -229,10 +229,4 @@ class StoryApplicationTests {
                 .andExpect(jsonPath("$.works[0].isRated").value(true));
     }
 
-        private void changeRole(UserEntity target, String role) {
-        target.setRole(role);
-        users.saveAndFlush(target);
-        users.removeAllRoles(target.getId());
-        users.assignRole(target.getId(), role);
-    }
 }
