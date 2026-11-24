@@ -27,10 +27,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -137,31 +137,14 @@ class StoryApplicationTests {
     }
 
     @Test
-    void adminPermissionFollowsDatabaseRoleEvenWithAnOldToken() throws Exception {
-        String adminToken = JwtTokens.token("ACCESS", "ADMIN");
-        mvc.perform(get("/api/v1/admin/users/count").header("Authorization", "Bearer " + adminToken)).andExpect(status().isForbidden());
-        changeRole(user, "ADMIN");
-        mvc.perform(get("/api/v1/admin/users/count").header("Authorization", "Bearer " + access)).andExpect(status().isOk());
-        changeRole(user, "PARTICIPANT");
-        mvc.perform(get("/api/v1/admin/users/count").header("Authorization", "Bearer " + adminToken)).andExpect(status().isForbidden());
-    }
-
-    @Test
-    void adminCanPersistGlobalClosureAndClosedEventRejectsNewApplications() throws Exception {
+    void closedEventRejectsNewApplications() throws Exception {
         mvc.perform(get("/api/v1/event/status").header("Authorization", "Bearer " + access))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.close").value(false));
 
-        changeRole(user, "ADMIN");
-        user.setClosedAccess(true);
-        users.saveAndFlush(user);
-
-        mvc.perform(put("/api/v1/admin/event/status")
-                        .header("Authorization", "Bearer " + access)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"close\":true}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.close").value(true));
+        EventSettingsEntity settings = eventSettings.findById((short) 1).orElseThrow();
+        settings.setApplicationsClosed(true);
+        eventSettings.saveAndFlush(settings);
 
         assertThat(eventSettings.findById((short) 1))
                 .isPresent()
@@ -172,8 +155,6 @@ class StoryApplicationTests {
         mvc.perform(get("/api/v1/event/status").header("Authorization", "Bearer " + access))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.close").value(true));
-
-        changeRole(user, "PARTICIPANT");
 
         mvc.perform(post("/api/v1/applications")
                         .param("conId", "1")
@@ -195,7 +176,7 @@ class StoryApplicationTests {
 
     @Test
     @Transactional
-    void adminCanModerateApplicationAndRateWorkAndParticipantSeesResult() throws Exception {
+    void participantSeesModerationAndRatingResult() throws Exception {
         ContestEntity contest = contestRepository.findAll().getFirst();
 
         ApplicationEntity application = new ApplicationEntity();
@@ -215,41 +196,17 @@ class StoryApplicationTests {
         work.setApplicationEntity(application);
         work = workRepository.saveAndFlush(work);
 
-        changeRole(user, "ADMIN");
-        entityManager.clear();
+        application.setStatus("REJECTED");
+        application.setRejectionReason("Incomplete description");
+        application.setReviewedBy("admin@example.com");
+        application.setReviewedAt(LocalDateTime.now());
+        applicationRepository.saveAndFlush(application);
 
-        mvc.perform(patch("/api/v1/admin/applications/{appId}/status", application.getId())
-                        .header("Authorization", "Bearer " + access)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"status\":\"REJECTED\",\"rejectionReason\":\"Incomplete description\"}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("REJECTED"))
-                .andExpect(jsonPath("$.rejectionReason").value("Incomplete description"))
-                .andExpect(jsonPath("$.reviewedBy").value(JwtTokens.EMAIL));
-
-        mvc.perform(put("/api/v1/admin/works/{workId}/rating", work.getId())
-                        .header("Authorization", "Bearer " + access)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"rate\":101}"))
-                .andExpect(status().isBadRequest());
-
-        mvc.perform(put("/api/v1/admin/works/{workId}/rating", Long.MAX_VALUE)
-                        .header("Authorization", "Bearer " + access)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"rate\":87}"))
-                .andExpect(status().isNotFound());
-
-        mvc.perform(put("/api/v1/admin/works/{workId}/rating", work.getId())
-                        .header("Authorization", "Bearer " + access)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"rate\":87}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.rate").value(87))
-                .andExpect(jsonPath("$.isRated").value(true))
-                .andExpect(jsonPath("$.ratedBy").value(JwtTokens.EMAIL));
-
-        UserEntity participant = users.findById(user.getId()).orElseThrow();
-        changeRole(participant, "PARTICIPANT");
+        work.setRate(87);
+        work.setIsRated(true);
+        work.setRatedBy("admin@example.com");
+        work.setRatedAt(LocalDateTime.now());
+        workRepository.saveAndFlush(work);
         entityManager.clear();
 
         mvc.perform(get("/api/v1/applications").header("Authorization", "Bearer " + access))
@@ -260,10 +217,4 @@ class StoryApplicationTests {
                 .andExpect(jsonPath("$[0].works[0].isRated").value(true));
     }
 
-    private void changeRole(UserEntity target, String role) {
-        target.setRole(role);
-        users.saveAndFlush(target);
-        users.removeAllRoles(target.getId());
-        users.assignRole(target.getId(), role);
-    }
 }

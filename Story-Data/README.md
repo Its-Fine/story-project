@@ -1,117 +1,79 @@
-# Story-Data
+# Story-Data — запуск и обслуживание
 
-## Зачем нужно
+В этой папке находятся Docker Compose, настройки PostgreSQL и утилиты управления
+проектом. Пользовательские данные хранятся в Docker volumes и не удаляются при
+обычной остановке контейнеров.
 
-Хранит `docker-compose.yml` для развертывания всей ИС.
+## Первый локальный запуск на Windows
 
-## Файловая структура
-
-### Директории
-
-- `shells` - Скрипты для удобного развертывания ИС.
-- `environments` - секреты для запуска сервисов и настройки данных.
-- `services` - настройки для микросервисов системы.
-
-*Нужен файл с переменными окружения по примеру из `environments/test.env` для запуска сервиса на **production**.*
-
-### Файлы запуска
-
-- `my-docker.*` - скрипты для быстрого запуска docker-compose, первым аргументом указывается имя файла с переменными окружения.
-- `copy.sh` - скрипт для быстрого перемещения файлов из репозитория в специальное место на **production**.
-- `dist.sh` - скрипт для быстрой замены фронта на заглушку для проведения технических работ на **production**.
-
-## Примеры использования
-
-    # Запуск и остановка сервиса на windows
-
-    .\shells\my-docker.ps1 test up -d
-    .\shells\my-docker.ps1 test down
-
-    # Запуск и остановка сервиса на linux
-
-    bash .\shells\my-docker.sh test up -d
-    bash .\shells\my-docker.sh test down
-# Story-Data
-
-Docker Compose configuration for deploying the entire Story information system.
-
-## Quick Start
-
-```bash
-# Local development only
-cp .env.local.example .env
-
-# Edit .env: replace all local passwords and STORY_JWT_SECRET
-
-# Start all services
-docker compose up -d --build
-```
-
-For production, start from `.env.example`. It contains no fallback secrets and
-Compose will stop with a clear error while a required value is empty. Initial
-administrator and contest creation are explicit one-off operations documented in
-[`docs/configuration.md`](../docs/configuration.md).
-
-## Services
-
-| Service | Port | Description |
-|---------|------|-------------|
-| **frontend** | 3000 | React SPA (nginx) |
-| **story-auth** | internal 8001 | Authentication service (JWT, refresh-cookie) |
-| **story-back** | internal 8000 | Main backend API |
-| **story-admin** | internal 8002 | Administrative API and reports |
-| **postgresql** | localhost 5432 | PostgreSQL 16 database |
-| **minio** | localhost 9000/9001 | S3-compatible object storage (API/Console) |
-
-Browser API traffic enters only through frontend Nginx on port 3000. See
-[`docs/architecture/api-gateway.md`](../docs/architecture/api-gateway.md).
-
-### Minio Note
-
-Starting September 2026, MinIO Inc. removed official Docker images (`minio/minio`, `minio/mc`) from Docker Hub. This compose file uses **pgsty/minio** and **pgsty/mc** — community-maintained forks (Silo) that preserve full S3 API compatibility.
-
-## Stopping
-
-```bash
-docker compose down          # Stop services
-```
-
-Do not use `down -v` during normal maintenance: it deletes PostgreSQL and MinIO
-volumes. Use the safe maintenance utility described below.
-
-## Logs
-
-```bash
-docker compose logs -f              # All services
-docker compose logs -f story-auth   # Single service
-```
-
-## Safe maintenance utility
-
-The cross-platform helper validates required variables and supports `status`,
-`logs`, `restart`, and single-service `update` without deleting volumes. It can
-also create an env file while preserving every existing non-empty secret.
+Из корня репозитория выполните:
 
 ```powershell
-.\tools\storyctl.ps1 init-env
-.\tools\storyctl.ps1 check-config
-.\tools\storyctl.ps1 status
+.\Story-Data\tools\storyctl.ps1 init-env
+.\Story-Data\tools\storyctl.ps1 check-config
+.\Story-Data\tools\storyctl.ps1 start
 ```
 
-Linux and Docker-over-SSH examples are in
-[`docs/maintenance.md`](../docs/maintenance.md).
+После запуска приложение доступно по адресу <http://localhost:3000>.
 
-## Local Development
+`init-env` создаёт `Story-Data/.env` со случайными паролями и JWT-ключом. Файл
+`.env` нельзя добавлять в Git. Production-шаблон `.env.example` не содержит
+секретов и не позволяет запустить Compose, пока обязательные значения пусты.
 
-If you prefer running frontend/backend locally (not in Docker):
+## Контейнеры
 
-1. Start only infrastructure: `docker compose up -d postgresql minio`
-2. From the repository root, verify backend modules with `mvn verify` (or one
-   module with `mvn -pl story-auth -am verify`, `mvn -pl story-back -am verify`,
-   or `mvn -pl story-admin -am verify`).
-3. Run Spring Boot apps with `STORY_DATASOURCE_HOST=localhost`, `STORY_MINIO_HOST=localhost`.
-4. Run frontend with `npm start`.
+| Контейнер | Назначение | Доступ с компьютера |
+|---|---|---|
+| `frontend` | React и Nginx Gateway | `localhost:3000` |
+| `story-auth` | Регистрация, вход и JWT | только внутри Docker, порт 8001 |
+| `story-back` | Пользовательский API | только внутри Docker, порт 8000 |
+| `story-admin` | Административный API | только внутри Docker, порт 8002 |
+| `postgresql` | Основная БД | `127.0.0.1:5432` |
+| `minio` | Файлы работ | `127.0.0.1:9000`, консоль 9001 |
+| `minio-init` | Одноразовое создание bucket | постоянно работать не должен |
 
-The backend Dockerfiles use the repository root as their build context because
-all services inherit shared versions and build settings from the root `pom.xml`.
-Their normal image builds run Maven tests; `Story-Tables` is not a Maven module.
+Java-сервисы не публикуются наружу. Браузер обращается только к frontend, а Nginx
+направляет запросы в нужный внутренний сервис.
+
+## Повседневные команды
+
+```powershell
+.\Story-Data\tools\storyctl.ps1 status
+.\Story-Data\tools\storyctl.ps1 logs
+.\Story-Data\tools\storyctl.ps1 logs story-back
+.\Story-Data\tools\storyctl.ps1 restart story-back
+.\Story-Data\tools\storyctl.ps1 update story-back
+```
+
+Версии для Linux находятся в `tools/storyctl.sh`. Работа через Docker SSH context
+описана в [инструкции обслуживания](../docs/maintenance.md).
+
+## Зависимости запуска
+
+- PostgreSQL должен пройти health check до запуска backend.
+- `story-back` применяет Flyway-миграции и подготавливает общую схему БД.
+- `story-auth` и `story-admin` ждут готовности `story-back`, чтобы не обращаться к
+  ещё не обновлённой схеме.
+- `minio-init` ждёт MinIO и создаёт bucket с повторными попытками.
+- `story-admin` ждёт готовности схемы и завершения `minio-init`.
+- frontend запускается после создания трёх API-сервисов.
+
+Эти зависимости соответствуют текущему владельцу миграций. При выделении
+миграций в отдельный обязательный контейнер зависимости можно будет ослабить.
+
+## Безопасная остановка
+
+```powershell
+Set-Location .\Story-Data
+docker compose down
+```
+
+Команда сохраняет PostgreSQL и MinIO. Не используйте `docker compose down -v`
+при обычной работе: параметр `-v` удаляет все данные проекта.
+
+Дополнительные инструкции:
+
+- [настройки и создание администратора](../docs/configuration.md);
+- [миграции БД](../docs/database-migrations.md);
+- [маршруты Gateway](../docs/architecture/api-gateway.md);
+- [Jenkins и развёртывание](../docs/ci-cd.md).
