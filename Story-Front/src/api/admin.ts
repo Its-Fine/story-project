@@ -4,6 +4,7 @@ export interface AdminUser {
   userId: number;
   email: string;
   role: string;
+  roles?: string[];
   closedAccess: boolean;
   banned: boolean;
   firstName: string;
@@ -43,6 +44,40 @@ export interface AdminWork {
   createdAt: string;
 }
 
+export interface AdminContest {
+  conId: number;
+  name: string;
+  description: string;
+  startAge: number;
+  endAge: number;
+}
+
+export interface AdminContestRequest {
+  name: string;
+  description: string;
+  startAge: number;
+  endAge: number;
+}
+
+export interface AccessPermission {
+  name: string;
+  description: string;
+}
+
+export interface AccessRole {
+  name: string;
+  description: string;
+  permissions: string[];
+  assignedUsers: number;
+  system: boolean;
+}
+
+export interface AccessRoleRequest {
+  name: string;
+  description: string;
+  permissions: string[];
+}
+
 export const adminApi = {
   getUsersCount: (token: string) =>
     apiClient<number>({ api: '/admin/users/count', method: 'GET', token }),
@@ -71,6 +106,47 @@ export const adminApi = {
     apiClient<AdminWork[]>({
       api: `/admin/works?appId=${appId}`,
       method: 'GET',
+      token,
+    }),
+
+  getContests: (token: string) =>
+    apiClient<AdminContest[]>({ api: '/admin/contests', method: 'GET', token }),
+
+  createContest: (data: AdminContestRequest, token: string) =>
+    apiClient<AdminContest>({ api: '/admin/contests', method: 'POST', values: data, token }),
+
+  updateContest: (contestId: number, data: AdminContestRequest, token: string) =>
+    apiClient<AdminContest>({
+      api: `/admin/contests/${contestId}`,
+      method: 'PUT',
+      values: data,
+      token,
+    }),
+
+  deleteContest: (contestId: number, token: string) =>
+    apiClient<void>({ api: `/admin/contests/${contestId}`, method: 'DELETE', token }),
+
+  getPermissions: (token: string) =>
+    apiClient<AccessPermission[]>({ api: '/admin/access/permissions', method: 'GET', token }),
+
+  getRoles: (token: string) =>
+    apiClient<AccessRole[]>({ api: '/admin/access/roles', method: 'GET', token }),
+
+  createRole: (data: AccessRoleRequest, token: string) =>
+    apiClient<AccessRole>({ api: '/admin/access/roles', method: 'POST', values: data, token }),
+
+  updateRole: (roleName: string, data: AccessRoleRequest, token: string) =>
+    apiClient<AccessRole>({
+      api: `/admin/access/roles/${encodeURIComponent(roleName)}`,
+      method: 'PUT',
+      values: data,
+      token,
+    }),
+
+  deleteRole: (roleName: string, token: string) =>
+    apiClient<void>({
+      api: `/admin/access/roles/${encodeURIComponent(roleName)}`,
+      method: 'DELETE',
       token,
     }),
 

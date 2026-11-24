@@ -5,10 +5,11 @@ import { useAuth } from '../contexts/AuthContext';
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requiredRole?: 'ADMIN' | 'PARTICIPANT';
+  requiredPermission?: string;
 }
 
-export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
-  const { role, initialized } = useAuth();
+export const ProtectedRoute = ({ children, requiredRole, requiredPermission }: ProtectedRouteProps) => {
+  const { role, permissions, initialized } = useAuth();
   const location = useLocation();
 
   if (!initialized) {
@@ -20,6 +21,10 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
   }
 
   if (requiredRole && role !== requiredRole) {
+    return <Navigate to={role === 'ADMIN' ? '/admin' : '/profile'} replace />;
+  }
+
+  if (requiredPermission && !permissions.includes(requiredPermission)) {
     return <Navigate to={role === 'ADMIN' ? '/admin' : '/profile'} replace />;
   }
 

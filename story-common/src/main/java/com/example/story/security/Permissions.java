@@ -3,6 +3,7 @@ package com.example.story.security;
 public final class Permissions {
 
     public static final String CONTEST_READ = "contest:read";
+    public static final String CONTEST_MANAGE = "contest:manage";
     public static final String EVENT_READ = "event:read";
     public static final String APPLICATION_READ_OWN = "application:read:own";
     public static final String APPLICATION_WRITE_OWN = "application:write:own";

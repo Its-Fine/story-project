@@ -29,6 +29,8 @@ export interface AuthResponse {
 export interface MeResponse {
   email: string;
   role: string;
+  roles: string[];
+  permissions: string[];
 }
 
 const AUTH_OPTIONS = { baseUrl: AUTH_BASE_URL, withCredentials: true };

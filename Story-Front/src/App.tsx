@@ -26,7 +26,7 @@ const AppContent = () => {
       <Routes>
         <Route path="/" element={<MainPage />} />
         <Route path="/application/:contestId" element={
-          <ProtectedRoute requiredRole="PARTICIPANT">
+          <ProtectedRoute requiredPermission="application:write:own">
             <ApplicationPage />
           </ProtectedRoute>
         } />

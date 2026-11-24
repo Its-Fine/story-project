@@ -51,6 +51,7 @@ public class AdminUsersService {
         List<ResponseUserDataAdminDto> result = new ArrayList<>();
         for (UserEntity entity : users) {
             ResponseUserDataAdminDto dto = userMapper.entityToUserDataAdminDto(entity);
+            dto.setRoles(userRepository.findRoleNamesByUserId(entity.getId()));
             dto.setApplicationsCount(applicationRepository.countByUserId(dto.getUserId()).intValue());
             result.add(dto);
         }
@@ -68,7 +69,9 @@ public class AdminUsersService {
         requireAuthority(USER_MANAGE);
 
         UserEntity user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
-        return userMapper.entityToUserDataAdminDto(user);
+        ResponseUserDataAdminDto dto = userMapper.entityToUserDataAdminDto(user);
+        dto.setRoles(userRepository.findRoleNamesByUserId(user.getId()));
+        return dto;
     }
 
     public void updateUserPassword(Long userId, RequestUserPasswordDto dto) {

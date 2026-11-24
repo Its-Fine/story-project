@@ -3,6 +3,7 @@ import { authApi } from '../api/auth';
 
 interface AuthContextValue {
   role: string | null;
+  permissions: string[];
   initialized: boolean;
   signIn: (accessToken: string) => Promise<string>;
   signOut: () => void;
@@ -13,12 +14,14 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [role, setRole] = useState<string | null>(null);
+  const [permissions, setPermissions] = useState<string[]>([]);
   const [initialized, setInitialized] = useState(false);
 
   const refreshSession = useCallback(async () => {
     const token = localStorage.getItem('token');
     if (!token) {
       setRole(null);
+      setPermissions([]);
       setInitialized(true);
       return;
     }
@@ -27,13 +30,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const response = await authApi.me(token);
       if (response.data?.role) {
         setRole(response.data.role);
+        setPermissions(response.data.permissions ?? []);
       } else {
         localStorage.removeItem('token');
         setRole(null);
+        setPermissions([]);
       }
     } catch {
       localStorage.removeItem('token');
       setRole(null);
+      setPermissions([]);
     } finally {
       setInitialized(true);
     }
@@ -53,10 +59,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       setRole(nextRole);
+      setPermissions(response.data?.permissions ?? []);
       return nextRole;
     } catch (error) {
       localStorage.removeItem('token');
       setRole(null);
+      setPermissions([]);
       throw error;
     } finally {
       setInitialized(true);
@@ -66,11 +74,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const signOut = useCallback(() => {
     localStorage.removeItem('token');
     setRole(null);
+    setPermissions([]);
   }, []);
 
   const value = useMemo(
-    () => ({ role, initialized, signIn, signOut, refreshSession }),
-    [role, initialized, signIn, signOut, refreshSession]
+    () => ({ role, permissions, initialized, signIn, signOut, refreshSession }),
+    [role, permissions, initialized, signIn, signOut, refreshSession]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
