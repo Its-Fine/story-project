@@ -19,14 +19,14 @@ public class MinioStorageService implements StorageService {
     private final StoryProperties storyProperties;
 
     @Override
-    public void saveFile(String fileName, MultipartFile file) throws IOException {
+    public void saveFile(String fileName, MultipartFile file, String contentType) throws IOException {
         try {
             minioClient.putObject(
                     PutObjectArgs.builder()
                             .bucket(storyProperties.getMinio().getBucket())
                             .object(fileName)
                             .stream(file.getInputStream(), file.getSize(), -1)
-                            .contentType(file.getContentType())
+                            .contentType(contentType)
                             .build()
             );
         }

@@ -7,7 +7,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 
 public interface StorageService {
-    void saveFile(String fileName, MultipartFile file) throws IOException;
+    void saveFile(String fileName, MultipartFile file, String contentType) throws IOException;
 
     LoadedFile loadFile(String fileName) throws IOException;
 

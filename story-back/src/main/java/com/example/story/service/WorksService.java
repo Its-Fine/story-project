@@ -16,11 +16,14 @@ import com.example.story.service.storage.StorageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import static com.example.story.utilities.Helpers.getCurrentUser;
 
@@ -35,6 +38,7 @@ public class WorksService {
     private final WorkMapper workMapper;
     private final StorageService storageService;
     private final StoryProperties storyProperties;
+    private final WorkFileValidator workFileValidator;
 
     public List<ResponseWorkDto> obtainAllInfo(Long appId) {
         ApplicationEntity application = getApplicationAndCheckAccess(appId);
@@ -64,19 +68,42 @@ public class WorksService {
         }
     }
 
+    @Transactional(rollbackFor = IOException.class)
     public ResponseWorkIdDto create(Long appId, MultipartFile file) throws IOException {
         ApplicationEntity application = getApplicationAndCheckAccessAndConditions(appId, file);
+        WorkFileValidator.ValidatedFile validatedFile = workFileValidator.validate(
+                file, storyProperties.getWork().getAllowedContentTypes());
+        if (validatedFile.safeName().length() > storyProperties.getWork().getNameSize()) {
+            throw new IllegalArgumentException(
+                    "Имя файла длиннее " + storyProperties.getWork().getNameSize() + " символов");
+        }
+        if (workRepository.findByNameAndApplicationId(validatedFile.safeName(), appId).isPresent()) {
+            throw new IllegalArgumentException("Файл с таким именем уже добавлен в заявку");
+        }
 
-        String fileName = "user-" + application.getUserEntity().getId() + "/app-" + appId + "/" + file.getOriginalFilename();
+        String fileName = "user-" + application.getUserEntity().getId()
+                + "/app-" + appId + "/" + UUID.randomUUID() + "-" + validatedFile.safeName();
 
         WorkEntity work = new WorkEntity();
-        work.setName(file.getOriginalFilename());
+        work.setName(validatedFile.safeName());
         work.setFileName(fileName);
         work.setFileSize((int) file.getSize());
         work.setApplicationEntity(application);
         WorkEntity newWork = workRepository.save(work);
 
-        storageService.saveFile(fileName, file);
+        storageService.saveFile(fileName, file, validatedFile.contentType());
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                if (status == STATUS_ROLLED_BACK) {
+                    try {
+                        storageService.deleteFile(fileName);
+                    } catch (IOException ignored) {
+                        // The database rollback remains authoritative; orphan cleanup can be retried operationally.
+                    }
+                }
+            }
+        });
 
         return workMapper.entityToWorkIdDto(newWork);
     }
@@ -127,18 +154,6 @@ public class WorksService {
         }
         if (workRepository.sumSizeByApplicationId(appId) + file.getSize() > storyProperties.getApplication().getSize().toBytes()) {
             throw new RuntimeException("Total works size for this applications exceeded");
-        }
-        if (file.getOriginalFilename().length() > storyProperties.getWork().getNameSize()) {
-            throw new RuntimeException("File name length bigger than " + storyProperties.getWork().getNameSize() + " characters");
-        }
-        if (workRepository.findByNameAndApplicationId(file.getOriginalFilename(), appId).isPresent()) {
-            throw new RuntimeException("Work with this name is already exist");
-        }
-
-        String contentType = file.getContentType();
-        List<String> allowedTypes = storyProperties.getWork().getAllowedContentTypes();
-        if (contentType == null || !allowedTypes.contains(contentType)) {
-            throw new RuntimeException("Invalid file format. Allowed content types: " + String.join(", ", allowedTypes));
         }
         return app;
     }
