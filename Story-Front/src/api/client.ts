@@ -21,6 +21,22 @@ interface ApiResponse<T = any> {
   };
 }
 
+const fallbackMessage = (status: number) => {
+  switch (status) {
+    case 400: return 'Проверьте введённые данные.';
+    case 401: return 'Сессия истекла. Войдите снова.';
+    case 403: return 'Недостаточно прав для выполнения действия.';
+    case 404: return 'Запрошенные данные не найдены.';
+    case 409: return 'Данные уже изменились. Обновите страницу и повторите действие.';
+    case 410: return 'Приём заявок закрыт.';
+    case 413: return 'Файл слишком большой.';
+    case 415: return 'Формат файла не поддерживается.';
+    default: return status >= 500
+      ? 'Сервис временно недоступен. Повторите попытку позже.'
+      : 'Не удалось выполнить запрос.';
+  }
+};
+
 export const apiClient = async <T = any>({
   api,
   method = 'POST',
@@ -72,7 +88,7 @@ export const apiClient = async <T = any>({
         status: response.status,
         error: {
           status: response.status,
-          message: parsedData?.message || 'Request failed',
+          message: parsedData?.message || fallbackMessage(response.status),
           details: parsedData,
         },
       };
@@ -87,7 +103,9 @@ export const apiClient = async <T = any>({
       status: 500,
       error: {
         status: 500,
-        message: error instanceof Error ? error.message : 'Network error',
+        message: error instanceof Error && error.message !== 'Failed to fetch'
+          ? error.message
+          : 'Не удалось связаться с сервером. Проверьте подключение и повторите попытку.',
       },
     };
   }

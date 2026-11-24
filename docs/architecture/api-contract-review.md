@@ -1,8 +1,9 @@
-# Сверка переданного API с кодом
+# Сверка переданного API и Postman с кодом
 
-Проверены обе страницы «Запросы 3.xlsx.pdf» и контроллеры/DTO после PR #8
-(16.11.2026). Базовый путь текущих сервисов: `/api/v1`. Таблица из PDF — ориентир;
-расхождения не исправляются массовым переименованием полей без перехода frontend.
+Проверены «Запросы 3.xlsx.pdf», переданная коллекция `Story.postman_collection.json`
+и действующие контроллеры/DTO (24.11.2026). Базовый путь через Gateway:
+`http://localhost:3000/api/v1`. PDF и исходная коллекция — ориентиры; источником
+истины остаётся код. Поля не переименовываются массово без перехода frontend.
 
 | Раздел | Реальное состояние | Решение |
 |---|---|---|
@@ -13,23 +14,34 @@
 | Account PUT | `RequestUserDataDto`/service меняют имя и фамилию; дата рождения из PDF не реализована | Отдельно решить правила смены возраста после подачи заявки |
 | Applications | CRUD реализован; ownership проверяется сервисами, DTO имеют дополнительные поля состояния | Нужны негативные интеграционные тесты чужих заявок при выделении admin |
 | Works download | Ответ — байты с Content-Type файла, а не `multipart/form-data` | Исправить описание контракта при OpenAPI; загрузка остаётся multipart |
-| Contests | `/all` и `/contests` защищены `hasRole('PARTICIPANT')`; PDF допускает ADMIN для доступных номинаций | Дать admin собственную операцию чтения при выделении сервиса |
-| Admin user access | DTO содержит `currentPassword`, `access`; меняется только `closedAccess`. `banned` и `role` из PDF отсутствуют | Добавлять отдельным изменением с permissions, аудитом, защитой последнего администратора |
+| Contests | `/all` и `/contests` относятся к participant API; административного CRUD пока нет | Добавить admin CRUD отдельной итерацией T12 |
+| Admin user access | Старый `/access` меняет `closedAccess`; реальная блокировка выполняется новым `/banned`. Роли меняются через `/roles` | Сохранить `/access` для совместимости; блокировка и роли требуют текущий пароль и пишутся в аудит |
 | Admin password | DTO требует `currentPassword` и `newPassword`, PDF — только `password` | Не ослаблять подтверждение пароля; согласовать контракт с Keycloak |
 | Admin contests | В PDF `POST/PUT/DELETE` отмечены `TO DO`, контроллера нет | Отдельный этап CRUD номинаций |
 | Event status | В текущем JSON `close`, в PDF `closed`; состояние было в памяти и зависело от личного исключения | Текущий шаг: БД, глобальное состояние, совместимость обоих имён |
-| Reports | Есть `/reports/applications/excel`, административный маршрут вне `/admin` | Перенести вместе с остальным admin-функционалом |
+| Reports | `/reports/applications/excel` обслуживается `story-admin`, Gateway направляет его отдельно | Сохранить URL для совместимости frontend |
+
+## Расхождения исходной Postman-коллекции
+
+- `host` должен быть `http://localhost:3000/api/v1`, а не прямой порт Java-сервиса;
+- signup в исходной коллекции использует camelCase, но текущий auth-контракт требует
+  `first_name`, `last_name`, `birth_date`, `parent_consent`;
+- отсутствовали `/auth/me`, `/auth/logout`, `/auth/reset`;
+- отсутствовали смена статуса заявки, оценивание работы, роли, реальная блокировка
+  пользователя и Excel-отчёт;
+- refresh-токен передаётся HttpOnly cookie и не копируется вручную в Bearer header.
+
+Актуальная импортируемая коллекция хранится в `docs/postman`.
 
 ## Владение текущими маршрутами
 
 | Реализация сегодня | Маршруты | Планируемый владелец |
 |---|---|---|
-| `story-auth` | `/auth/signup`, `/login`, `/refresh`, `/logout`, `/me`, `/reset` | auth/Keycloak с переходным API |
-| `story-back`, пользовательские контроллеры | `/account/**`, `/applications/**`, `/works/**`, `/contests/**`, `/event/status` | participant service |
-| `story-back`, `controller/admin` | `/admin/users/**`, `/admin/applications/**`, `/admin/works/**`, `/admin/event/status` | отдельный `story-admin` |
-| `story-back`, `ReportController` | `/reports/applications/excel` | `story-admin` с совместимым переходом URL |
+| `story-auth` | `/auth/signup`, `/login`, `/refresh`, `/logout`, `/me`, `/reset` | `story-auth` |
+| `story-back` | `/account/**`, `/applications/**`, `/works/**`, `/contests/**`, `/event/status` | participant API |
+| `story-admin` | `/admin/users/**`, `/admin/applications/**`, `/admin/works/**`, `/admin/event/status` | administrative API |
+| `story-admin` | `/reports/applications/excel` | administrative reports |
 
-Этот документ не утверждает, что сервисы уже физически разделены. Проверки JWT,
-банов и ролей из PR #8 сохраняются. Равенство URL-префиксов и защищённость данных
-проверяются отдельно: нельзя считать интерфейс скрытым только потому, что ссылка
-на него не показывается участнику.
+Сервисы физически разделены, но используют общую PostgreSQL с разными правами.
+Gateway не является средством авторизации: JWT, permissions, ban и ownership
+проверяются внутри соответствующего сервиса.
