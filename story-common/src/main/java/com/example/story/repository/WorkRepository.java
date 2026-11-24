@@ -23,4 +23,6 @@ public interface WorkRepository extends JpaRepository<WorkEntity, Long> {
 
     @Query(value = "SELECT * FROM works WHERE name = :name AND application_id = :applicationId", nativeQuery = true)
     Optional<WorkEntity> findByNameAndApplicationId(String name, Long applicationId);
+
+    Optional<WorkEntity> findByIdAndApplicationEntityUserEntityId(Long id, Long userId);
 }

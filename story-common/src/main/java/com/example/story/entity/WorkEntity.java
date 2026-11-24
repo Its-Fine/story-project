@@ -18,7 +18,7 @@ public class WorkEntity {
     @Column(name = "name", nullable = false)
     private String name;
 
-    @Column(name = "file_name", nullable = false)
+    @Column(name = "file_name", nullable = false, length = 1024)
     private String fileName;
 
     @Column(name = "rate")

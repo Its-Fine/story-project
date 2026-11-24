@@ -2,6 +2,7 @@ package com.example.story.controller;
 
 import com.example.story.dto.errors.ResponseErrorDto;
 import com.example.story.dto.applications.RequestApplicationDto;
+import com.example.story.exception.ResourceNotFoundException;
 import com.example.story.service.ApplicationsService;
 import com.example.story.dto.Group;
 import com.example.story.service.EventService;
@@ -30,6 +31,8 @@ public class ApplicationsController {
                         .body(new ResponseErrorDto("Приём заявок закрыт. Новые заявки временно не принимаются."));
             }
             else return ResponseEntity.status(HttpStatus.CREATED).body(applicationService.create(conId, dto));
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ResponseErrorDto(e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ResponseErrorDto(e.getMessage()));
         }
@@ -40,6 +43,8 @@ public class ApplicationsController {
     public ResponseEntity<?> getAll() {
         try {
             return ResponseEntity.ok().body(applicationService.obtainAll());
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ResponseErrorDto(e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ResponseErrorDto(e.getMessage()));
         }
@@ -50,6 +55,8 @@ public class ApplicationsController {
     public ResponseEntity<?> getByAppId(@PathVariable Long appId) {
         try {
             return ResponseEntity.ok().body(applicationService.obtain(appId));
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ResponseErrorDto(e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ResponseErrorDto(e.getMessage()));
         }
@@ -67,6 +74,8 @@ public class ApplicationsController {
                 applicationService.update(appId, dto);
                 return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
             }
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ResponseErrorDto(e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ResponseErrorDto(e.getMessage()));
         }
@@ -81,6 +90,8 @@ public class ApplicationsController {
                 applicationService.delete(appId);
                 return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
             }
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ResponseErrorDto(e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ResponseErrorDto(e.getMessage()));
         }

@@ -3,10 +3,12 @@ package com.example.story.repository;
 import com.example.story.entity.ApplicationEntity;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
 
@@ -24,6 +26,15 @@ public interface ApplicationRepository extends JpaRepository<ApplicationEntity, 
 
     @Query(value = "SELECT * FROM applications WHERE user_id = :userId", nativeQuery = true)
     List<ApplicationEntity> findByUserId(Long userId);
+
+    Optional<ApplicationEntity> findByIdAndUserEntityId(Long id, Long userId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select application from ApplicationEntity application " +
+            "where application.id = :id and application.userEntity.id = :userId")
+    Optional<ApplicationEntity> findOwnedByIdForUpdate(@Param("id") Long id, @Param("userId") Long userId);
+
+    boolean existsByNameAndContestEntityIdAndIdNot(String name, Long contestId, Long id);
 
     @Query(value = "SELECT * FROM applications WHERE contest_id = :conId", nativeQuery = true)
     List<ApplicationEntity> findByContestId(Long conId);

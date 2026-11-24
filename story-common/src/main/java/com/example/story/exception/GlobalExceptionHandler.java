@@ -23,6 +23,12 @@ public class GlobalExceptionHandler {
                 .body(new ResponseErrorDto("Access denied"));
     }
 
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ResponseErrorDto> handleResourceNotFound(ResourceNotFoundException e) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ResponseErrorDto(e.getMessage()));
+    }
+
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ResponseErrorDto> handleRuntimeException(RuntimeException e) {
         log.error("Runtime error: {}", e.getMessage(), e);

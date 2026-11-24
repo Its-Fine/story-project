@@ -4,6 +4,7 @@ import com.example.story.dto.works.ResponseWorkDto;
 import com.example.story.dto.works.ResponseWorkIdDto;
 import com.example.story.dto.storage.LoadedFile;
 import com.example.story.entity.UserEntity;
+import com.example.story.exception.ResourceNotFoundException;
 import com.example.story.mapper.WorkMapper;
 import com.example.story.configuration.StoryProperties;
 import com.example.story.entity.ApplicationEntity;
@@ -14,6 +15,7 @@ import com.example.story.repository.UserRepository;
 
 import com.example.story.service.storage.StorageService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -30,6 +32,7 @@ import static com.example.story.utilities.Helpers.getCurrentUser;
 @Service
 @Transactional
 @RequiredArgsConstructor
+@Slf4j
 public class WorksService {
 
     private final WorkRepository workRepository;
@@ -39,6 +42,8 @@ public class WorksService {
     private final StorageService storageService;
     private final StoryProperties storyProperties;
     private final WorkFileValidator workFileValidator;
+    private final EventService eventService;
+    private final StorageCleanupService storageCleanupService;
 
     public List<ResponseWorkDto> obtainAllInfo(Long appId) {
         ApplicationEntity application = getApplicationAndCheckAccess(appId);
@@ -70,7 +75,9 @@ public class WorksService {
 
     @Transactional(rollbackFor = IOException.class)
     public ResponseWorkIdDto create(Long appId, MultipartFile file) throws IOException {
-        ApplicationEntity application = getApplicationAndCheckAccessAndConditions(appId, file);
+        ensureApplicationsOpen();
+        ApplicationEntity application = getApplicationAndCheckAccessForUpdate(appId);
+        validateUploadLimits(application, file);
         WorkFileValidator.ValidatedFile validatedFile = workFileValidator.validate(
                 file, storyProperties.getWork().getAllowedContentTypes());
         if (validatedFile.safeName().length() > storyProperties.getWork().getNameSize()) {
@@ -98,8 +105,9 @@ public class WorksService {
                 if (status == STATUS_ROLLED_BACK) {
                     try {
                         storageService.deleteFile(fileName);
-                    } catch (IOException ignored) {
-                        // The database rollback remains authoritative; orphan cleanup can be retried operationally.
+                    } catch (IOException cleanupException) {
+                        log.error("Could not remove uploaded object {} after database rollback",
+                                fileName, cleanupException);
                     }
                 }
             }
@@ -109,42 +117,33 @@ public class WorksService {
     }
 
     public void delete(Long workId) {
+        ensureApplicationsOpen();
         WorkEntity work = getWorkAndCheckAccess(workId);
-        try {
-            storageService.deleteFile(work.getFileName());
-        } catch (IOException e) {
-            System.out.println("Error while deleting: " + work.getFileName());
-        }
+        storageCleanupService.schedule(work.getFileName());
         workRepository.delete(work);
     }
 
     // --- вспомогательные методы ---
 
     private ApplicationEntity getApplicationAndCheckAccess(Long appId) {
-        ApplicationEntity app = applicationRepository.findById(appId).orElseThrow(() -> new RuntimeException("Application not found"));
         UserEntity user = getCurrentUser(userRepository);
-        if (!app.getUserEntity().getId().equals(user.getId())) {
-            throw new RuntimeException("Application not found");
-        }
-        return app;
+        return applicationRepository.findByIdAndUserEntityId(appId, user.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Application not found"));
     }
 
     private WorkEntity getWorkAndCheckAccess(Long workId) {
-        WorkEntity work = workRepository.findById(workId).orElseThrow(() -> new RuntimeException("Work not found"));
         UserEntity user = getCurrentUser(userRepository);
-        if (!work.getApplicationEntity().getUserEntity().getId().equals(user.getId())) {
-            throw new RuntimeException("Work not found");
-        }
-        return work;
+        return workRepository.findByIdAndApplicationEntityUserEntityId(workId, user.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Work not found"));
     }
 
-    private ApplicationEntity getApplicationAndCheckAccessAndConditions(Long appId, MultipartFile file) {
-        ApplicationEntity app = applicationRepository.findById(appId).orElseThrow(() -> new RuntimeException("Application not found"));
+    private ApplicationEntity getApplicationAndCheckAccessForUpdate(Long appId) {
         UserEntity user = getCurrentUser(userRepository);
+        return applicationRepository.findOwnedByIdForUpdate(appId, user.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Application not found"));
+    }
 
-        if (!app.getUserEntity().getId().equals(user.getId())) {
-            throw new RuntimeException("Application not found");
-        }
+    private void validateUploadLimits(ApplicationEntity app, MultipartFile file) {
         if (storyProperties.getApplication().getWorkCount() > -1 &&
                 workRepository.countByApplicationId(app.getId()) >= storyProperties.getApplication().getWorkCount()) {
             throw new RuntimeException("User already has max works for this application");
@@ -152,9 +151,15 @@ public class WorksService {
         if (file.getSize() > storyProperties.getWork().getSize().toBytes()) {
             throw new RuntimeException("File size bigger than " + storyProperties.getWork().getSize() + " bytes");
         }
-        if (workRepository.sumSizeByApplicationId(appId) + file.getSize() > storyProperties.getApplication().getSize().toBytes()) {
+        if ((long) workRepository.sumSizeByApplicationId(app.getId()) + file.getSize()
+                > storyProperties.getApplication().getSize().toBytes()) {
             throw new RuntimeException("Total works size for this applications exceeded");
         }
-        return app;
+    }
+
+    private void ensureApplicationsOpen() {
+        if (eventService.isApplicationsClosed()) {
+            throw new IllegalStateException("Application submission is closed");
+        }
     }
 }
