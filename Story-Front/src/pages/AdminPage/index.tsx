@@ -49,6 +49,7 @@ export const AdminPage = () => {
   const [applicationCount, setApplicationCount] = useState(0);
   const [eventClosed, setEventClosed] = useState(false);
   const [search, setSearch] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
   const [expandedApplicationId, setExpandedApplicationId] = useState<number | null>(null);
   const [worksByApplication, setWorksByApplication] = useState<Record<number, AdminWork[]>>({});
   const [ratingDrafts, setRatingDrafts] = useState<Record<number, string>>({});
@@ -123,6 +124,64 @@ export const AdminPage = () => {
       setUsers(result.data ?? []);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : t('Ошибка загрузки пользователей'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const requireAdminPassword = () => {
+    if (adminPassword) return adminPassword;
+    setError(t('Введите текущий пароль администратора для изменения доступа.'));
+    return null;
+  };
+
+  const toggleUserBanned = async (user: AdminUser) => {
+    const token = getToken();
+    const currentPassword = requireAdminPassword();
+    if (!token || !currentPassword || busy) return;
+
+    setBusy(true);
+    setError('');
+    setNotice('');
+    try {
+      const result = await adminApi.setUserBanned(user.userId, !user.banned, currentPassword, token);
+      if (result.error || result.status >= 400) {
+        throw new Error(result.error?.message || t('Не удалось изменить блокировку пользователя'));
+      }
+      setUsers(previous => previous.map(item => item.userId === user.userId
+        ? { ...item, banned: !user.banned }
+        : item));
+      setAdminPassword('');
+      setNotice(user.banned ? t('Пользователь разблокирован.') : t('Пользователь заблокирован.'));
+    } catch (actionError) {
+      setError(actionError instanceof Error ? actionError.message : t('Не удалось изменить блокировку пользователя'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const toggleUserAdminRole = async (user: AdminUser) => {
+    const token = getToken();
+    const currentPassword = requireAdminPassword();
+    if (!token || !currentPassword || busy) return;
+
+    const makeAdmin = user.role !== 'ADMIN';
+    const roles = makeAdmin ? ['ADMIN', 'PARTICIPANT'] : ['PARTICIPANT'];
+    setBusy(true);
+    setError('');
+    setNotice('');
+    try {
+      const result = await adminApi.setUserRoles(user.userId, roles, currentPassword, token);
+      if (result.error || result.status >= 400) {
+        throw new Error(result.error?.message || t('Не удалось изменить роль пользователя'));
+      }
+      setUsers(previous => previous.map(item => item.userId === user.userId
+        ? { ...item, role: makeAdmin ? 'ADMIN' : 'PARTICIPANT' }
+        : item));
+      setAdminPassword('');
+      setNotice(makeAdmin ? t('Права администратора добавлены.') : t('Права администратора сняты.'));
+    } catch (actionError) {
+      setError(actionError instanceof Error ? actionError.message : t('Не удалось изменить роль пользователя'));
     } finally {
       setBusy(false);
     }
@@ -461,6 +520,19 @@ export const AdminPage = () => {
               <Button variant="primary" type="submit" disabled={busy}>{t('Найти')}</Button>
               {search && <button className={css.textButton} type="button" onClick={() => { setSearch(''); void loadUsers(); }}>{t('Сбросить')}</button>}
             </form>
+            <div className={css.securityPanel}>
+              <label>
+                <span>{t('Текущий пароль администратора')}</span>
+                <input
+                  type="password"
+                  value={adminPassword}
+                  onChange={event => setAdminPassword(event.target.value)}
+                  autoComplete="current-password"
+                  placeholder={t('Нужен для роли и блокировки')}
+                />
+              </label>
+              <p>{t('Пароль не сохраняется и очищается после успешного изменения.')}</p>
+            </div>
             {loading ? <p className={css.empty}>{t('Загрузка…')}</p> : users.length === 0 ? (
               <p className={css.empty}>{t('Пользователи не найдены.')}</p>
             ) : (
@@ -473,7 +545,16 @@ export const AdminPage = () => {
                       <span>{user.email}</span>
                     </div>
                     <span className={`${css.roleBadge} ${user.role === 'ADMIN' ? css.adminBadge : ''}`}>{t(getRoleLabel(user.role))}</span>
+                    {user.banned && <span className={css.bannedBadge}>{t('Заблокирован')}</span>}
                     <span className={css.userApplications}>{user.applicationsCount} {t('заявок')}</span>
+                    <div className={css.userActions}>
+                      <button className={css.textButton} onClick={() => void toggleUserBanned(user)} disabled={busy}>
+                        {user.banned ? t('Разблокировать') : t('Заблокировать')}
+                      </button>
+                      <button className={css.textButton} onClick={() => void toggleUserAdminRole(user)} disabled={busy}>
+                        {user.role === 'ADMIN' ? t('Снять роль администратора') : t('Сделать администратором')}
+                      </button>
+                    </div>
                   </article>
                 ))}
               </div>

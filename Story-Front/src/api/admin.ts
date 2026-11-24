@@ -74,6 +74,22 @@ export const adminApi = {
       token,
     }),
 
+  setUserBanned: (userId: number, banned: boolean, currentPassword: string, token: string) =>
+    apiClient<void>({
+      api: `/admin/users/${userId}/banned`,
+      method: 'PUT',
+      values: { banned, currentPassword },
+      token,
+    }),
+
+  setUserRoles: (userId: number, roles: string[], currentPassword: string, token: string) =>
+    apiClient<void>({
+      api: `/admin/users/${userId}/roles`,
+      method: 'PUT',
+      values: { roles, currentPassword },
+      token,
+    }),
+
   setApplicationStatus: (
     appId: number,
     status: AdminApplication['status'],
