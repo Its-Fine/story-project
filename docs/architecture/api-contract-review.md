@@ -17,7 +17,7 @@
 | Contests | `/all` и `/contests` относятся к participant API; административного CRUD пока нет | Добавить admin CRUD отдельной итерацией T12 |
 | Admin user access | Старый `/access` меняет `closedAccess`; реальная блокировка выполняется новым `/banned`. Роли меняются через `/roles` | Сохранить `/access` для совместимости; блокировка и роли требуют текущий пароль и пишутся в аудит |
 | Admin password | DTO требует `currentPassword` и `newPassword`, PDF — только `password` | Не ослаблять подтверждение пароля; согласовать контракт с Keycloak |
-| Admin contests | В PDF `POST/PUT/DELETE` отмечены `TO DO`, контроллера нет | Отдельный этап CRUD номинаций |
+| Admin contests | CRUD реализован в `story-admin` по `/admin/contests` | Удаление запрещено при наличии связанных заявок |
 | Event status | В текущем JSON `close`, в PDF `closed`; состояние было в памяти и зависело от личного исключения | Текущий шаг: БД, глобальное состояние, совместимость обоих имён |
 | Reports | `/reports/applications/excel` обслуживается `story-admin`, Gateway направляет его отдельно | Сохранить URL для совместимости frontend |
 

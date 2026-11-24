@@ -154,6 +154,37 @@
             "url": "{{baseUrl}}/admin/users/{{userId}}/roles"
           }
         },
+        { "name": "Contest nominations", "request": { "method": "GET", "url": "{{baseUrl}}/admin/contests" } },
+        {
+          "name": "Create contest nomination",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"New nomination\",\n  \"description\": \"Description\",\n  \"startAge\": 6,\n  \"endAge\": 18\n}" },
+            "url": "{{baseUrl}}/admin/contests"
+          }
+        },
+        {
+          "name": "Update contest nomination",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Updated nomination\",\n  \"description\": \"Updated description\",\n  \"startAge\": 6,\n  \"endAge\": 18\n}" },
+            "url": "{{baseUrl}}/admin/contests/{{contestId}}"
+          }
+        },
+        { "name": "Delete contest nomination", "request": { "method": "DELETE", "url": "{{baseUrl}}/admin/contests/{{contestId}}" } },
+        { "name": "Permission catalogue", "request": { "method": "GET", "url": "{{baseUrl}}/admin/access/permissions" } },
+        { "name": "Roles", "request": { "method": "GET", "url": "{{baseUrl}}/admin/access/roles" } },
+        {
+          "name": "Create centrally managed role",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"CURATOR\",\n  \"description\": \"Can review applications\",\n  \"permissions\": [\"application:read:any\", \"work:read:any\"]\n}" },
+            "url": "{{baseUrl}}/admin/access/roles"
+          }
+        },
         { "name": "Applications count", "request": { "method": "GET", "url": "{{baseUrl}}/admin/applications/count" } },
         { "name": "Applications", "request": { "method": "GET", "url": "{{baseUrl}}/admin/applications?count=100&page=0" } },
         { "name": "Application details", "request": { "method": "GET", "url": "{{baseUrl}}/admin/applications/{{appId}}" } },

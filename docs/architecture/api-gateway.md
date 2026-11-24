@@ -13,6 +13,9 @@
 | `/api/v1/reports/**` | `story-admin:8002` | ADMIN |
 | `/api/v1/participant/**` | `story-back:8000`, с удалением `/participant` | authenticated participant API |
 | `/api/v1/**` | `story-back:8000` | временная совместимость frontend |
+| `/docs/auth/openapi.json` | `story-auth:8001/v3/api-docs` | контракт auth API |
+| `/docs/back/openapi.json` | `story-back:8000/v3/api-docs` | контракт participant API |
+| `/docs/admin/openapi.json` | `story-admin:8002/v3/api-docs` | контракт admin API |
 
 Проверки ролей остаются внутри сервисов. Nginx выбирает upstream, но не считается
 источником авторизации и не заменяет JWT, проверку ban или ownership.
