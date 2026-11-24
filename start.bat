@@ -1,120 +1,38 @@
-# Story — творческий конкурс (подработка)
-
-Состав проекта:
-- `story-back` — бэкенд на Spring Boot 3 (Java 21, PostgreSQL, Minio, JWT)
-- `Story-Front` — фронтенд на React 18 + TypeScript (Create React App)
-- `Story-Data` — инфраструктура: Docker Compose (PostgreSQL + Minio + Spring)
-
----
-
-## 1. Быстрый старт через Docker (рекомендуется)
-
-Все сервисы поднимаются одним `docker-compose` из папки `Story-Data`.
-
-### 1.1 Подготовка окружения
-
-```bash
-cd Story-Data
-cp .env.example .env
-# отредактируйте .env при необходимости (пароли, секрет JWT и т.д.)
-```
-
-### 1.2 Запуск
-
-```bash
-# из папки Story-Data
-docker compose up -d --build
-```
-
-Сервисы:
-- **story-auth** (регистрация/вход/refresh): `http://localhost:8001`
-- **story-back** (бизнес-логика, заявки, отчёты): `http://localhost:8000`
-- Swagger UI: `http://localhost:8000/swagger-ui.html`
-- PostgreSQL: `localhost:5432`
-- Minio: `localhost:9000` (консоль `localhost:9001`)
-- Фронтенд: запускается отдельно (см. раздел 2)
-
-Остановить:
-```bash
-docker compose down
-```
-
-### 1.3 Переменные окружения
-
-Пример `.env` лежит в `Story-Data/.env.example`. Обязательные минимум:
-- `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`
-- `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD`, `MINIO_MC_BUCKET`
-- `STORY_JWT_SECRET` — Base64-секрет не менее 32 байт
-- `STORY_ADMIN_USERNAME`, `STORY_ADMIN_PASSWORD` — создаваемый супер администратор при старте
-
----
-
-## 2. Запуск фронтенда локально
-
-```bash
-cd Story-Front
-npm install
-npm start        # http://localhost:3000
-```
-
-Фронтенд по умолчанию обращается к `http://localhost:8000/api/v1`.
-
----
-
-## 3. Роли и разделение доступа
-
-Приложение — **одно SPA с ролевым разделением**:
-
-| Роль | Доступ |
-|------|--------|
-| `PARTICIPANT` | `/profile`, `/application/:contestId` — подача и просмотр своих заявок |
-| `ADMIN` | всё выше + `/admin` — админская панель |
-
-Роль определяется из JWT-токена при загрузке приложения (`/api/v1/auth/me`). В шапке (`Header`) отображается текущая роль, доступна ссылка «Админка» только для `ADMIN`.
-
----
-
-## 4. Что сделано в рамках рефакторинга
-
-- Удалены мёртвые файлы `_REMIND.md`
-- Заменён закомментированный плагин в `pom.xml`
-- Добавлен `GlobalExceptionHandler` — единая обработка `RuntimeException` и ошибок валидации (`MethodArgumentNotValidException`)
-- Добавлены значения по умолчанию для всех обязательных env-переменных в `application.yaml` — приложение стартует даже без `.env`
-- Исправлен путь в `docker-compose.yml`: `../Story-Back` → `../story-back`
-- Создан `Story-Data/.env.example` с примером всех переменных
-- Исправлен `ProtectedRoute` — редирект с несуществующего `/unauthorized` на `/`
-- Реализован `Header` с отображением роли и ссылкой на админку
-- Добавлен роут `/admin` с защитой `requiredRole="ADMIN"` и заглушка `AdminPage`
-- Фронтенд загружает роль пользователя при старте через `/api/v1/auth/me`
-
----
-
-## 5. Планы на дальнейшее (пункт 4 ТЗ)
-
-- **Вынос системы регистрации/входа** в отдельное приложение `story-auth` (собственный Spring Boot сервис с базой пользователей и JWT). Основное приложение будет верифицировать токены через общий секрет/публичный ключ.
-- Аудит-лог («key log») действий — вход, смена прав, смена пароля админом.
-
----
-
 @echo off
-chcp 65001 >nul
-echo ==========================================
-echo Запуск системы Story (Auth + Back + DB + MinIO)
-echo ==========================================
+setlocal
 
-cd /d "%~dp0"
+set "PROJECT_ROOT=%~dp0"
+set "DATA_DIR=%PROJECT_ROOT%Story-Data"
+set "ENV_FILE=%DATA_DIR%\.env"
+set "STORYCTL=%DATA_DIR%\tools\storyctl.ps1"
 
-echo [1/2] Остановка старых контейнеров (если есть)...
-docker-compose down
+where docker >nul 2>nul
+if errorlevel 1 (
+  echo Docker Desktop is not installed or docker.exe is not available in PATH.
+  exit /b 1
+)
 
-echo [2/2] Сборка и запуск всех сервисов...
-docker-compose up --build -d
+if not exist "%ENV_FILE%" (
+  echo Creating a local environment file with generated secrets...
+  powershell -NoProfile -ExecutionPolicy Bypass -File "%STORYCTL%" init-env
+  if errorlevel 1 exit /b 1
+  echo.
+  echo Edit "%ENV_FILE%" before starting:
+  echo   STORY_COOKIE_SECURE=false
+  echo   STORY_COOKIE_SAME_SITE=Lax
+  echo   STORY_CORS_ALLOWED_ORIGINS=http://localhost:3000
+  echo Then run start.bat again.
+  exit /b 0
+)
 
-echo.
-echo ==========================================
-echo Готово! 
-echo - story-auth доступен на: http://localhost:8001
-echo - story-back доступен на: http://localhost:8000
-echo - MinIO Console: http://localhost:9001 (minioadmin / minioadmin)
-echo ==========================================
-pause
+powershell -NoProfile -ExecutionPolicy Bypass -File "%STORYCTL%" check-config
+if errorlevel 1 exit /b 1
+
+pushd "%DATA_DIR%"
+docker compose --env-file .env --file docker-compose.yml up --detach --build
+set "RESULT=%ERRORLEVEL%"
+popd
+
+if not "%RESULT%"=="0" exit /b %RESULT%
+echo Story Project containers were started. Use storyctl.ps1 status to inspect them.
+exit /b 0

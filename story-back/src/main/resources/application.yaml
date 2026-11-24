@@ -50,6 +50,9 @@ story:
   admin:
     email: ${STORY_ADMIN_USERNAME:}
     password: ${STORY_ADMIN_PASSWORD:}
+    first-name: ${STORY_BOOTSTRAP_ADMIN_FIRST_NAME:Admin}
+    last-name: ${STORY_BOOTSTRAP_ADMIN_LAST_NAME:User}
+    birth-date: ${STORY_BOOTSTRAP_ADMIN_BIRTH_DATE:2001-11-04}
 
   bootstrap:
     admin-enabled: ${STORY_BOOTSTRAP_ADMIN_ENABLED:false}
@@ -72,6 +75,7 @@ story:
   work:
     size: ${STORY_WORK_SIZE:20MB}
     name-size: 255
+    allowed-content-types: ${STORY_WORK_ALLOWED_CONTENT_TYPES:image/png,image/jpeg,image/jpg,image/tiff}
 
   minio:
     url: http://${STORY_MINIO_HOST}:9000

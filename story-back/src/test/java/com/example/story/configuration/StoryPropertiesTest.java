@@ -10,6 +10,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 class StoryPropertiesTest {
 
     @Test
+    void allowedUploadTypesAreReadFromConfigurationProperties() {
+        StoryProperties properties = new StoryProperties();
+        properties.getWork().setAllowedContentTypes(List.of("image/png", "application/pdf"));
+        assertThat(properties.getWork().getAllowedContentTypes())
+                .containsExactly("image/png", "application/pdf");
+    }
+
+    @Test
     void rejectsInvalidJwtAndMissingStorageCredentials() {
         StoryProperties properties = new StoryProperties();
         properties.getJwt().setSecret("not-base64");

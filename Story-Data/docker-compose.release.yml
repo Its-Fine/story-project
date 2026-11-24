@@ -1,0 +1,26 @@
+services:
+  story-migrations:
+    image: ${STORY_IMAGE_REPOSITORY:?STORY_IMAGE_REPOSITORY is required}/migrations:${STORY_IMAGE_TAG:?STORY_IMAGE_TAG is required}
+    environment:
+      FLYWAY_URL: jdbc:postgresql://postgresql:5432/${POSTGRES_DB:?POSTGRES_DB is required}
+      FLYWAY_USER: story_migrator
+      FLYWAY_PASSWORD: ${STORY_MIGRATION_DB_PASSWORD:?STORY_MIGRATION_DB_PASSWORD is required}
+      FLYWAY_CONNECT_RETRIES: "60"
+      FLYWAY_VALIDATE_MIGRATION_NAMING: "true"
+      FLYWAY_CLEAN_DISABLED: "true"
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    networks: [data]
+
+  story-auth:
+    image: ${STORY_IMAGE_REPOSITORY:?STORY_IMAGE_REPOSITORY is required}/story-auth:${STORY_IMAGE_TAG:?STORY_IMAGE_TAG is required}
+
+  story-back:
+    image: ${STORY_IMAGE_REPOSITORY:?STORY_IMAGE_REPOSITORY is required}/story-back:${STORY_IMAGE_TAG:?STORY_IMAGE_TAG is required}
+
+  story-admin:
+    image: ${STORY_IMAGE_REPOSITORY:?STORY_IMAGE_REPOSITORY is required}/story-admin:${STORY_IMAGE_TAG:?STORY_IMAGE_TAG is required}
+
+  frontend:
+    image: ${STORY_IMAGE_REPOSITORY:?STORY_IMAGE_REPOSITORY is required}/frontend:${STORY_IMAGE_TAG:?STORY_IMAGE_TAG is required}
