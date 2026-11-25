@@ -42,7 +42,9 @@ class AdminUsersServiceTest {
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(
                         admin.getEmail(), null,
-                        List.of(new SimpleGrantedAuthority("role:manage"))));
+                        List.of(
+                                new SimpleGrantedAuthority("role:manage"),
+                                new SimpleGrantedAuthority("user:manage"))));
         when(users.findByEmail(admin.getEmail())).thenReturn(Optional.of(admin));
         when(passwords.matches("current-password", admin.getPassword())).thenReturn(true);
         when(users.findAllRoleNames()).thenReturn(List.of("ADMIN", "PARTICIPANT"));
