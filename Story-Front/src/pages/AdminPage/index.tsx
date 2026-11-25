@@ -62,8 +62,8 @@ const formatSize = (bytes: number, language: 'ru' | 'en') => {
 
 export const AdminPage = () => {
   const navigate = useNavigate();
-  const { signOut, permissions } = useAuth();
-  const can = (permission: string) => permissions.includes(permission);
+  const { signOut, permissions: accessPermissions } = useAuth();
+  const can = useCallback((permission: string) => accessPermissions.includes(permission), [accessPermissions]);
   const { t, language } = useLanguage();
   const locale = language === 'en' ? 'en-US' : 'ru-RU';
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
@@ -143,7 +143,7 @@ export const AdminPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [t, permissions]);
+  }, [t, can]);
 
   useEffect(() => {
     void loadDashboard();

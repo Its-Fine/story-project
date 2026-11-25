@@ -173,7 +173,7 @@ export const ApplicationPage = () => {
     } finally {
       setDraftLoaded(true);
     }
-  }, [draftStorageKey]);
+  }, [draftStorageKey, t]);
 
   useEffect(() => {
     updateNominationsByBirthDate(isCurator ? members[0]?.birthDate || '' : formData.birthDate);
