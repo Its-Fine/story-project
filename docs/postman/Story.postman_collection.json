@@ -1,0 +1,225 @@
+{
+  "info": {
+    "name": "Story Project — current API",
+    "description": "Актуальные запросы через Nginx Gateway. Источник истины — контроллеры и DTO репозитория.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000/api/v1" },
+    { "key": "email", "value": "test@example.com" },
+    { "key": "password", "value": "TestPassword123" },
+    { "key": "newPassword", "value": "NewPassword123" },
+    { "key": "adminEmail", "value": "admin@example.com" },
+    { "key": "adminPassword", "value": "" },
+    { "key": "accessToken", "value": "" },
+    { "key": "userId", "value": "1" },
+    { "key": "contestId", "value": "1" },
+    { "key": "appId", "value": "1" },
+    { "key": "workId", "value": "1" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Signup",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\",\n  \"password_again\": \"{{password}}\",\n  \"first_name\": \"Test\",\n  \"last_name\": \"User\",\n  \"birth_date\": \"2000-01-01\",\n  \"consent\": true,\n  \"parent_consent\": false\n}" },
+            "url": "{{baseUrl}}/auth/signup"
+          }
+        },
+        {
+          "name": "Login participant",
+          "event": [{ "listen": "test", "script": { "exec": ["if (pm.response.code === 200) {", "  pm.collectionVariables.set('accessToken', pm.response.json().access_token);", "}"] } }],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}" },
+            "url": "{{baseUrl}}/auth/login"
+          }
+        },
+        {
+          "name": "Login administrator",
+          "event": [{ "listen": "test", "script": { "exec": ["if (pm.response.code === 200) {", "  pm.collectionVariables.set('accessToken', pm.response.json().access_token);", "}"] } }],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}" },
+            "url": "{{baseUrl}}/auth/login"
+          }
+        },
+        { "name": "Current user", "request": { "method": "GET", "url": "{{baseUrl}}/auth/me" } },
+        { "name": "Refresh", "request": { "auth": { "type": "noauth" }, "method": "POST", "url": "{{baseUrl}}/auth/refresh" } },
+        { "name": "Logout", "request": { "method": "POST", "url": "{{baseUrl}}/auth/logout" } },
+        {
+          "name": "Change password through auth",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"current_password\": \"{{password}}\",\n  \"new_password\": \"{{newPassword}}\"\n}" },
+            "url": "{{baseUrl}}/auth/reset"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Participant",
+      "item": [
+        { "name": "Account data", "request": { "method": "GET", "url": "{{baseUrl}}/account/data" } },
+        {
+          "name": "Update account",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"firstName\": \"Test\",\n  \"lastName\": \"Updated\"\n}" },
+            "url": "{{baseUrl}}/account/data"
+          }
+        },
+        {
+          "name": "Change account password",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"currentPassword\": \"{{password}}\",\n  \"newPassword\": \"{{newPassword}}\"\n}" },
+            "url": "{{baseUrl}}/account/password"
+          }
+        },
+        { "name": "Contests", "request": { "method": "GET", "url": "{{baseUrl}}/contests/all" } },
+        { "name": "Event status", "request": { "method": "GET", "url": "{{baseUrl}}/event/status" } },
+        { "name": "My applications", "request": { "method": "GET", "url": "{{baseUrl}}/applications" } },
+        {
+          "name": "Create application",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"My work\",\n  \"description\": \"Description\",\n  \"city\": \"Moscow\",\n  \"organization\": \"\",\n  \"mentorName\": \"\",\n  \"isTeam\": false,\n  \"isCurator\": false,\n  \"members\": []\n}" },
+            "url": "{{baseUrl}}/applications?conId={{contestId}}"
+          }
+        },
+        { "name": "Application details", "request": { "method": "GET", "url": "{{baseUrl}}/applications/{{appId}}" } },
+        {
+          "name": "Update application",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Updated work\",\n  \"description\": \"Updated description\",\n  \"city\": \"Moscow\",\n  \"organization\": \"\",\n  \"mentorName\": \"\",\n  \"members\": []\n}" },
+            "url": "{{baseUrl}}/applications/{{appId}}"
+          }
+        },
+        { "name": "Delete application", "request": { "method": "DELETE", "url": "{{baseUrl}}/applications/{{appId}}" } },
+        {
+          "name": "Upload work",
+          "request": {
+            "method": "POST",
+            "body": { "mode": "formdata", "formdata": [{ "key": "file", "type": "file", "src": [] }] },
+            "url": "{{baseUrl}}/works?appId={{appId}}"
+          }
+        },
+        { "name": "Application works", "request": { "method": "GET", "url": "{{baseUrl}}/works?appId={{appId}}" } },
+        { "name": "Work details", "request": { "method": "GET", "url": "{{baseUrl}}/works/{{workId}}" } },
+        { "name": "Download work", "request": { "method": "GET", "url": "{{baseUrl}}/works/{{workId}}/file" } },
+        { "name": "Delete work", "request": { "method": "DELETE", "url": "{{baseUrl}}/works/{{workId}}" } }
+      ]
+    },
+    {
+      "name": "Administrator",
+      "item": [
+        { "name": "Users count", "request": { "method": "GET", "url": "{{baseUrl}}/admin/users/count" } },
+        { "name": "Users", "request": { "method": "GET", "url": "{{baseUrl}}/admin/users?count=100&page=0" } },
+        { "name": "User details", "request": { "method": "GET", "url": "{{baseUrl}}/admin/users/{{userId}}" } },
+        {
+          "name": "Ban or unban user",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"currentPassword\": \"{{adminPassword}}\",\n  \"banned\": true\n}" },
+            "url": "{{baseUrl}}/admin/users/{{userId}}/banned"
+          }
+        },
+        {
+          "name": "Change user roles",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"currentPassword\": \"{{adminPassword}}\",\n  \"roles\": [\"PARTICIPANT\", \"ADMIN\"]\n}" },
+            "url": "{{baseUrl}}/admin/users/{{userId}}/roles"
+          }
+        },
+        { "name": "Contest nominations", "request": { "method": "GET", "url": "{{baseUrl}}/admin/contests" } },
+        {
+          "name": "Create contest nomination",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"New nomination\",\n  \"description\": \"Description\",\n  \"startAge\": 6,\n  \"endAge\": 18\n}" },
+            "url": "{{baseUrl}}/admin/contests"
+          }
+        },
+        {
+          "name": "Update contest nomination",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Updated nomination\",\n  \"description\": \"Updated description\",\n  \"startAge\": 6,\n  \"endAge\": 18\n}" },
+            "url": "{{baseUrl}}/admin/contests/{{contestId}}"
+          }
+        },
+        { "name": "Delete contest nomination", "request": { "method": "DELETE", "url": "{{baseUrl}}/admin/contests/{{contestId}}" } },
+        { "name": "Permission catalogue", "request": { "method": "GET", "url": "{{baseUrl}}/admin/access/permissions" } },
+        { "name": "Roles", "request": { "method": "GET", "url": "{{baseUrl}}/admin/access/roles" } },
+        {
+          "name": "Create centrally managed role",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"CURATOR\",\n  \"description\": \"Can review applications\",\n  \"permissions\": [\"application:read:any\", \"work:read:any\"]\n}" },
+            "url": "{{baseUrl}}/admin/access/roles"
+          }
+        },
+        { "name": "Applications count", "request": { "method": "GET", "url": "{{baseUrl}}/admin/applications/count" } },
+        { "name": "Applications", "request": { "method": "GET", "url": "{{baseUrl}}/admin/applications?count=100&page=0" } },
+        { "name": "Application details", "request": { "method": "GET", "url": "{{baseUrl}}/admin/applications/{{appId}}" } },
+        {
+          "name": "Moderate application",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"status\": \"ACCEPTED\",\n  \"rejectionReason\": null\n}" },
+            "url": "{{baseUrl}}/admin/applications/{{appId}}/status"
+          }
+        },
+        { "name": "Application works", "request": { "method": "GET", "url": "{{baseUrl}}/admin/works?appId={{appId}}" } },
+        { "name": "Download participant work", "request": { "method": "GET", "url": "{{baseUrl}}/admin/works/{{workId}}/file" } },
+        {
+          "name": "Set work rating",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"rate\": 87\n}" },
+            "url": "{{baseUrl}}/admin/works/{{workId}}/rating"
+          }
+        },
+        { "name": "Clear work rating", "request": { "method": "DELETE", "url": "{{baseUrl}}/admin/works/{{workId}}/rating" } },
+        {
+          "name": "Open or close applications",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"close\": true\n}" },
+            "url": "{{baseUrl}}/admin/event/status"
+          }
+        },
+        { "name": "Download Excel report", "request": { "method": "GET", "url": "{{baseUrl}}/reports/applications/excel" } }
+      ]
+    }
+  ]
+}

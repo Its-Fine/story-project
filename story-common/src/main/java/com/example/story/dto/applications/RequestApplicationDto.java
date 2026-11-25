@@ -1,6 +1,7 @@
 package com.example.story.dto.applications;
 
 import com.example.story.dto.Group;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
@@ -35,7 +36,14 @@ public class RequestApplicationDto {
     private Boolean isCurator;
 
     @AssertTrue(groups = {Group.Create.class}, message = "Team must have at least one new member")
-    private boolean isParamsCorrect() {
-        return isTeam == false || (members != null && !members.isEmpty());
+    @JsonIgnore
+    public boolean isTeamMemberListValid() {
+        return !Boolean.TRUE.equals(isTeam) || (members != null && !members.isEmpty());
+    }
+
+    @AssertTrue(groups = {Group.Create.class}, message = "Individual application cannot contain team members")
+    @JsonIgnore
+    public boolean isIndividualMemberListValid() {
+        return !Boolean.FALSE.equals(isTeam) || members == null || members.isEmpty();
     }
 }

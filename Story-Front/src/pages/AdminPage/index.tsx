@@ -3,14 +3,37 @@ import { useNavigate } from 'react-router-dom';
 import { DecorLines } from '../../components/Layout/DecorLines';
 import { Button } from '../../components/UI/Button';
 import { Notification } from '../../components/UI/Notification';
-import { adminApi, AdminApplication, AdminUser, AdminWork } from '../../api/admin';
+import {
+  AccessPermission,
+  AccessRole,
+  AccessRoleRequest,
+  adminApi,
+  AdminApplication,
+  AdminContest,
+  AdminContestRequest,
+  AdminUser,
+  AdminWork,
+} from '../../api/admin';
 import { authApi } from '../../api/auth';
 import { getRoleLabel } from '../../utils/roleLabels';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import css from './index.module.scss';
 
-type AdminTab = 'overview' | 'applications' | 'users';
+type AdminTab = 'overview' | 'applications' | 'contests' | 'users' | 'access';
+
+const emptyContestDraft: AdminContestRequest = {
+  name: '',
+  description: '',
+  startAge: 0,
+  endAge: 18,
+};
+
+const emptyRoleDraft: AccessRoleRequest = {
+  name: '',
+  description: '',
+  permissions: [],
+};
 
 const getToken = () => localStorage.getItem('token');
 
@@ -39,16 +62,25 @@ const formatSize = (bytes: number, language: 'ru' | 'en') => {
 
 export const AdminPage = () => {
   const navigate = useNavigate();
-  const { signOut } = useAuth();
+  const { signOut, permissions: accessPermissions } = useAuth();
+  const can = useCallback((permission: string) => accessPermissions.includes(permission), [accessPermissions]);
   const { t, language } = useLanguage();
   const locale = language === 'en' ? 'en-US' : 'ru-RU';
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [applications, setApplications] = useState<AdminApplication[]>([]);
+  const [contests, setContests] = useState<AdminContest[]>([]);
+  const [roles, setRoles] = useState<AccessRole[]>([]);
+  const [permissions, setPermissions] = useState<AccessPermission[]>([]);
   const [userCount, setUserCount] = useState(0);
   const [applicationCount, setApplicationCount] = useState(0);
   const [eventClosed, setEventClosed] = useState(false);
   const [search, setSearch] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
+  const [contestDraft, setContestDraft] = useState<AdminContestRequest>(emptyContestDraft);
+  const [editingContestId, setEditingContestId] = useState<number | null>(null);
+  const [roleDraft, setRoleDraft] = useState<AccessRoleRequest>(emptyRoleDraft);
+  const [editingRoleName, setEditingRoleName] = useState<string | null>(null);
   const [expandedApplicationId, setExpandedApplicationId] = useState<number | null>(null);
   const [worksByApplication, setWorksByApplication] = useState<Record<number, AdminWork[]>>({});
   const [ratingDrafts, setRatingDrafts] = useState<Record<number, string>>({});
@@ -81,30 +113,37 @@ export const AdminPage = () => {
     setLoading(true);
     setError('');
     try {
-      const results = await Promise.all([
-        adminApi.getUsersCount(token),
-        adminApi.getApplicationsCount(token),
-        adminApi.getEventStatus(token),
-        adminApi.getUsers(token),
-        adminApi.getApplications(token),
+      const [usersTotal, applicationsTotal, event, usersResult, applicationsResult,
+        contestsResult, rolesResult, permissionsResult] = await Promise.all([
+        can('user:manage') ? adminApi.getUsersCount(token) : Promise.resolve(null),
+        can('application:read:any') ? adminApi.getApplicationsCount(token) : Promise.resolve(null),
+        can('event:read') ? adminApi.getEventStatus(token) : Promise.resolve(null),
+        can('user:manage') ? adminApi.getUsers(token) : Promise.resolve(null),
+        can('application:read:any') ? adminApi.getApplications(token) : Promise.resolve(null),
+        can('contest:manage') ? adminApi.getContests(token) : Promise.resolve(null),
+        can('role:manage') ? adminApi.getRoles(token) : Promise.resolve(null),
+        can('role:manage') ? adminApi.getPermissions(token) : Promise.resolve(null),
       ]);
-      const failed = results.find(result => result.error || result.status >= 400);
+      const failed = [usersTotal, applicationsTotal, event, usersResult, applicationsResult,
+        contestsResult, rolesResult, permissionsResult].find(result => result && (result.error || result.status >= 400));
       if (failed) {
         throw new Error(failed.error?.message || t('Не удалось загрузить данные панели'));
       }
 
-      const [usersTotal, applicationsTotal, event, usersResult, applicationsResult] = results;
-      setUserCount(usersTotal.data ?? 0);
-      setApplicationCount(applicationsTotal.data ?? 0);
-      setEventClosed(Boolean(event.data?.close));
-      setUsers(usersResult.data ?? []);
-      setApplications(applicationsResult.data ?? []);
+      setUserCount(usersTotal?.data ?? 0);
+      setApplicationCount(applicationsTotal?.data ?? 0);
+      setEventClosed(Boolean(event?.data?.close));
+      setUsers(usersResult?.data ?? []);
+      setApplications(applicationsResult?.data ?? []);
+      setContests(contestsResult?.data ?? []);
+      setRoles(rolesResult?.data ?? []);
+      setPermissions(permissionsResult?.data ?? []);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : t('Ошибка загрузки панели администратора'));
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [t, can]);
 
   useEffect(() => {
     void loadDashboard();
@@ -123,6 +162,208 @@ export const AdminPage = () => {
       setUsers(result.data ?? []);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : t('Ошибка загрузки пользователей'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const requireAdminPassword = () => {
+    if (adminPassword) return adminPassword;
+    setError(t('Введите текущий пароль администратора для изменения доступа.'));
+    return null;
+  };
+
+  const editContest = (contest: AdminContest) => {
+    setEditingContestId(contest.conId);
+    setContestDraft({
+      name: contest.name,
+      description: contest.description,
+      startAge: contest.startAge,
+      endAge: contest.endAge,
+    });
+  };
+
+  const resetContestDraft = () => {
+    setEditingContestId(null);
+    setContestDraft(emptyContestDraft);
+  };
+
+  const saveContest = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const token = getToken();
+    if (!token || busy) return;
+    if (!contestDraft.name.trim() || !contestDraft.description.trim()) {
+      setError(t('Заполните название и описание номинации.'));
+      return;
+    }
+    if (contestDraft.startAge < 0 || contestDraft.endAge < contestDraft.startAge) {
+      setError(t('Проверьте возрастные ограничения номинации.'));
+      return;
+    }
+
+    setBusy(true);
+    setError('');
+    setNotice('');
+    try {
+      const result = editingContestId === null
+        ? await adminApi.createContest(contestDraft, token)
+        : await adminApi.updateContest(editingContestId, contestDraft, token);
+      if (result.error || !result.data) {
+        throw new Error(result.error?.message || t('Не удалось сохранить номинацию'));
+      }
+      setContests(previous => editingContestId === null
+        ? [...previous, result.data!]
+        : previous.map(item => item.conId === editingContestId ? result.data! : item));
+      setNotice(editingContestId === null ? t('Номинация создана.') : t('Номинация обновлена.'));
+      resetContestDraft();
+    } catch (actionError) {
+      setError(actionError instanceof Error ? actionError.message : t('Не удалось сохранить номинацию'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const deleteContest = async (contest: AdminContest) => {
+    const token = getToken();
+    if (!token || busy || !window.confirm(t(`Удалить номинацию «${contest.name}»?`))) return;
+    setBusy(true);
+    setError('');
+    setNotice('');
+    try {
+      const result = await adminApi.deleteContest(contest.conId, token);
+      if (result.error || result.status >= 400) {
+        throw new Error(result.error?.message || t('Не удалось удалить номинацию'));
+      }
+      setContests(previous => previous.filter(item => item.conId !== contest.conId));
+      if (editingContestId === contest.conId) resetContestDraft();
+      setNotice(t('Номинация удалена.'));
+    } catch (actionError) {
+      setError(actionError instanceof Error ? actionError.message : t('Не удалось удалить номинацию'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const editRole = (role: AccessRole) => {
+    setEditingRoleName(role.name);
+    setRoleDraft({
+      name: role.name,
+      description: role.description,
+      permissions: [...role.permissions],
+    });
+  };
+
+  const resetRoleDraft = () => {
+    setEditingRoleName(null);
+    setRoleDraft(emptyRoleDraft);
+  };
+
+  const togglePermission = (permissionName: string) => {
+    setRoleDraft(previous => ({
+      ...previous,
+      permissions: previous.permissions.includes(permissionName)
+        ? previous.permissions.filter(item => item !== permissionName)
+        : [...previous.permissions, permissionName],
+    }));
+  };
+
+  const saveRole = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const token = getToken();
+    if (!token || busy) return;
+    if (!roleDraft.name.trim() || !roleDraft.description.trim() || roleDraft.permissions.length === 0) {
+      setError(t('Укажите название, описание и хотя бы одно разрешение.'));
+      return;
+    }
+
+    setBusy(true);
+    setError('');
+    setNotice('');
+    try {
+      const result = editingRoleName === null
+        ? await adminApi.createRole(roleDraft, token)
+        : await adminApi.updateRole(editingRoleName, roleDraft, token);
+      if (result.error || !result.data) {
+        throw new Error(result.error?.message || t('Не удалось сохранить роль'));
+      }
+      setRoles(previous => editingRoleName === null
+        ? [...previous, result.data!]
+        : previous.map(item => item.name === editingRoleName ? result.data! : item));
+      setNotice(editingRoleName === null ? t('Роль создана.') : t('Роль обновлена.'));
+      resetRoleDraft();
+    } catch (actionError) {
+      setError(actionError instanceof Error ? actionError.message : t('Не удалось сохранить роль'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const deleteRole = async (role: AccessRole) => {
+    const token = getToken();
+    if (!token || busy || role.system || !window.confirm(t(`Удалить роль «${role.name}»?`))) return;
+    setBusy(true);
+    setError('');
+    setNotice('');
+    try {
+      const result = await adminApi.deleteRole(role.name, token);
+      if (result.error || result.status >= 400) {
+        throw new Error(result.error?.message || t('Не удалось удалить роль'));
+      }
+      setRoles(previous => previous.filter(item => item.name !== role.name));
+      if (editingRoleName === role.name) resetRoleDraft();
+      setNotice(t('Роль удалена.'));
+    } catch (actionError) {
+      setError(actionError instanceof Error ? actionError.message : t('Не удалось удалить роль'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const toggleUserBanned = async (user: AdminUser) => {
+    const token = getToken();
+    const currentPassword = requireAdminPassword();
+    if (!token || !currentPassword || busy) return;
+
+    setBusy(true);
+    setError('');
+    setNotice('');
+    try {
+      const result = await adminApi.setUserBanned(user.userId, !user.banned, currentPassword, token);
+      if (result.error || result.status >= 400) {
+        throw new Error(result.error?.message || t('Не удалось изменить блокировку пользователя'));
+      }
+      setUsers(previous => previous.map(item => item.userId === user.userId
+        ? { ...item, banned: !user.banned }
+        : item));
+      setAdminPassword('');
+      setNotice(user.banned ? t('Пользователь разблокирован.') : t('Пользователь заблокирован.'));
+    } catch (actionError) {
+      setError(actionError instanceof Error ? actionError.message : t('Не удалось изменить блокировку пользователя'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const changeUserRoles = async (user: AdminUser, rolesToSet: string[]) => {
+    const token = getToken();
+    const currentPassword = requireAdminPassword();
+    if (!token || !currentPassword || busy) return;
+
+    setBusy(true);
+    setError('');
+    setNotice('');
+    try {
+      const result = await adminApi.setUserRoles(user.userId, rolesToSet, currentPassword, token);
+      if (result.error || result.status >= 400) {
+        throw new Error(result.error?.message || t('Не удалось изменить роль пользователя'));
+      }
+      setUsers(previous => previous.map(item => item.userId === user.userId
+        ? { ...item, role: rolesToSet[0], roles: rolesToSet }
+        : item));
+      setAdminPassword('');
+      setNotice(t('Роль пользователя обновлена.'));
+    } catch (actionError) {
+      setError(actionError instanceof Error ? actionError.message : t('Не удалось изменить роль пользователя'));
     } finally {
       setBusy(false);
     }
@@ -312,7 +553,7 @@ export const AdminPage = () => {
             <p className={css.subtitle}>{t('Участники, заявки, работы и настройки приёма.')}</p>
           </div>
           <div className={css.heroActions}>
-            <Button variant="secondary" onClick={downloadReport} disabled={busy}>{t('Скачать Excel-отчёт')}</Button>
+            {can('report:export') && <Button variant="secondary" onClick={downloadReport} disabled={busy}>{t('Скачать Excel-отчёт')}</Button>}
             <Button variant="secondary" onClick={handleLogout} disabled={loggingOut}>
               {loggingOut ? t('Выход...') : t('Выйти')}
             </Button>
@@ -334,16 +575,18 @@ export const AdminPage = () => {
             <strong className={`${css.eventState} ${eventClosed ? css.closed : css.open}`}>
               {loading ? '…' : eventClosed ? t('Закрыт') : t('Открыт')}
             </strong>
-            <button className={css.textButton} onClick={toggleEvent} disabled={loading || busy}>
+            {can('event:manage') && <button className={css.textButton} onClick={toggleEvent} disabled={loading || busy}>
               {eventClosed ? t('Открыть приём') : t('Закрыть приём')}
-            </button>
+            </button>}
           </article>
         </section>
 
         <nav className={css.tabs} aria-label={t('Разделы панели')}>
           <button className={activeTab === 'overview' ? css.activeTab : ''} onClick={() => setActiveTab('overview')}>{t('Обзор')}</button>
-          <button className={activeTab === 'applications' ? css.activeTab : ''} onClick={() => setActiveTab('applications')}>{t('Заявки')}</button>
-          <button className={activeTab === 'users' ? css.activeTab : ''} onClick={() => setActiveTab('users')}>{t('Участники')}</button>
+          {can('application:read:any') && <button className={activeTab === 'applications' ? css.activeTab : ''} onClick={() => setActiveTab('applications')}>{t('Заявки')}</button>}
+          {can('contest:manage') && <button className={activeTab === 'contests' ? css.activeTab : ''} onClick={() => setActiveTab('contests')}>{t('Номинации')}</button>}
+          {can('user:manage') && <button className={activeTab === 'users' ? css.activeTab : ''} onClick={() => setActiveTab('users')}>{t('Участники')}</button>}
+          {can('role:manage') && <button className={activeTab === 'access' ? css.activeTab : ''} onClick={() => setActiveTab('access')}>{t('Роли и доступ')}</button>}
           <button className={css.refreshButton} onClick={() => void loadDashboard()} disabled={loading || busy}>{t('Обновить')}</button>
         </nav>
 
@@ -373,7 +616,7 @@ export const AdminPage = () => {
           </section>
         )}
 
-        {activeTab === 'applications' && (
+        {activeTab === 'applications' && can('application:read:any') && (
           <section className={css.panel}>
             <div className={css.panelHeading}>
               <div><h2>{t('Заявки участников')}</h2><p>{t('Для заявки можно посмотреть работы и скачать файлы.')}</p></div>
@@ -394,9 +637,9 @@ export const AdminPage = () => {
                         <span className={`${css.statusBadge} ${css[`status${application.status}`]}`}>{t(
                           application.status === 'ACCEPTED' ? 'Принята' : application.status === 'REJECTED' ? 'Отклонена' : 'На рассмотрении'
                         )}</span>
-                        <button className={css.outlineButton} onClick={() => void toggleWorks(application.appId)} disabled={busy}>
+                        {can('work:read:any') && <button className={css.outlineButton} onClick={() => void toggleWorks(application.appId)} disabled={busy}>
                           {expandedApplicationId === application.appId ? t('Скрыть работы') : `${t('Работы')} (${application.worksCount})`}
-                        </button>
+                        </button>}
                       </div>
                     </div>
                     <div className={css.applicationMeta}>
@@ -409,12 +652,12 @@ export const AdminPage = () => {
                     {application.rejectionReason && (
                       <p className={css.rejectionReason}><strong>{t('Причина отказа:')}</strong> {application.rejectionReason}</p>
                     )}
-                    <div className={css.moderationActions}>
+                    {can('application:moderate') && <div className={css.moderationActions}>
                       <button onClick={() => void changeApplicationStatus(application, 'ACCEPTED')} disabled={busy || application.status === 'ACCEPTED'}>{t('Принять')}</button>
                       <button onClick={() => void changeApplicationStatus(application, 'REJECTED')} disabled={busy || application.status === 'REJECTED'}>{t('Отклонить')}</button>
                       <button onClick={() => void changeApplicationStatus(application, 'PENDING')} disabled={busy || application.status === 'PENDING'}>{t('Вернуть на рассмотрение')}</button>
-                    </div>
-                    {expandedApplicationId === application.appId && (
+                    </div>}
+                    {can('work:read:any') && expandedApplicationId === application.appId && (
                       <div className={css.worksList}>
                         {(worksByApplication[application.appId] ?? []).length === 0 ? (
                           <span className={css.muted}>{busy ? t('Загрузка файлов…') : t('В этой заявке нет файлов.')}</span>
@@ -425,7 +668,7 @@ export const AdminPage = () => {
                               <span>{formatSize(work.fileSize, language)} · {work.broken ? t('Файл повреждён') : t('Доступен')} · {work.isRated ? `${t('Оценка')}: ${work.rate}/100` : t('Без оценки')}</span>
                             </div>
                             <div className={css.workActions}>
-                              <input
+                              {can('work:rate') && <><input
                                 type="number"
                                 min="0"
                                 max="100"
@@ -436,7 +679,7 @@ export const AdminPage = () => {
                                 disabled={busy || work.broken}
                               />
                               <button className={css.textButton} onClick={() => void saveWorkRating(application.appId, work)} disabled={busy || work.broken}>{t('Сохранить оценку')}</button>
-                              {work.isRated && <button className={css.textButton} onClick={() => void clearWorkRating(application.appId, work)} disabled={busy}>{t('Снять оценку')}</button>}
+                              {work.isRated && <button className={css.textButton} onClick={() => void clearWorkRating(application.appId, work)} disabled={busy}>{t('Снять оценку')}</button>}</>}
                               <button className={css.textButton} onClick={() => void downloadFile(work)} disabled={busy || work.broken}>{t('Скачать')}</button>
                             </div>
                           </div>
@@ -450,7 +693,158 @@ export const AdminPage = () => {
           </section>
         )}
 
-        {activeTab === 'users' && (
+        {activeTab === 'contests' && can('contest:manage') && (
+          <section className={css.panel}>
+            <div className={css.panelHeading}>
+              <div>
+                <h2>{t('Номинации')}</h2>
+                <p>{t('Создание и изменение направлений конкурса и возрастных ограничений.')}</p>
+              </div>
+              <span className={css.resultCount}>{contests.length} {t('всего')}</span>
+            </div>
+
+            <form className={css.contestForm} onSubmit={saveContest}>
+              <label>
+                <span>{t('Название')}</span>
+                <input
+                  value={contestDraft.name}
+                  onChange={event => setContestDraft(previous => ({ ...previous, name: event.target.value }))}
+                  required
+                />
+              </label>
+              <label className={css.contestDescription}>
+                <span>{t('Описание')}</span>
+                <textarea
+                  value={contestDraft.description}
+                  onChange={event => setContestDraft(previous => ({ ...previous, description: event.target.value }))}
+                  required
+                />
+              </label>
+              <label>
+                <span>{t('Возраст от')}</span>
+                <input
+                  type="number"
+                  min="0"
+                  value={contestDraft.startAge}
+                  onChange={event => setContestDraft(previous => ({ ...previous, startAge: Number(event.target.value) }))}
+                  required
+                />
+              </label>
+              <label>
+                <span>{t('Возраст до')}</span>
+                <input
+                  type="number"
+                  min={contestDraft.startAge}
+                  value={contestDraft.endAge}
+                  onChange={event => setContestDraft(previous => ({ ...previous, endAge: Number(event.target.value) }))}
+                  required
+                />
+              </label>
+              <div className={css.contestFormActions}>
+                <Button variant="primary" type="submit" disabled={busy}>
+                  {editingContestId === null ? t('Создать номинацию') : t('Сохранить изменения')}
+                </Button>
+                {editingContestId !== null && (
+                  <button className={css.textButton} type="button" onClick={resetContestDraft} disabled={busy}>
+                    {t('Отмена')}
+                  </button>
+                )}
+              </div>
+            </form>
+
+            <div className={css.contestList}>
+              {contests.length === 0 ? <p className={css.empty}>{t('Номинаций пока нет.')}</p> : contests.map(contest => (
+                <article className={css.contestRow} key={contest.conId}>
+                  <div>
+                    <strong>{contest.name}</strong>
+                    <span>{contest.description}</span>
+                    <small>{t('Возраст:')} {contest.startAge}–{contest.endAge}</small>
+                  </div>
+                  <div className={css.userActions}>
+                    <button className={css.textButton} onClick={() => editContest(contest)} disabled={busy}>{t('Редактировать')}</button>
+                    <button className={css.textButton} onClick={() => void deleteContest(contest)} disabled={busy}>{t('Удалить')}</button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {activeTab === 'access' && can('role:manage') && (
+          <section className={css.panel}>
+            <div className={css.panelHeading}>
+              <div>
+                <h2>{t('Роли и доступ к ресурсам')}</h2>
+                <p>{t('Permissions определяют, какие API-операции доступны пользователям роли.')}</p>
+              </div>
+              <span className={css.resultCount}>{roles.length} {t('ролей')}</span>
+            </div>
+
+            <form className={css.roleForm} onSubmit={saveRole}>
+              <label>
+                <span>{t('Название роли')}</span>
+                <input
+                  value={roleDraft.name}
+                  onChange={event => setRoleDraft(previous => ({ ...previous, name: event.target.value.toUpperCase() }))}
+                  disabled={editingRoleName !== null}
+                  placeholder="CURATOR"
+                  required
+                />
+              </label>
+              <label>
+                <span>{t('Описание')}</span>
+                <input
+                  value={roleDraft.description}
+                  onChange={event => setRoleDraft(previous => ({ ...previous, description: event.target.value }))}
+                  required
+                />
+              </label>
+              <fieldset>
+                <legend>{t('Разрешения для API-ресурсов')}</legend>
+                <div className={css.permissionGrid}>
+                  {permissions.map(permission => (
+                    <label className={css.permissionOption} key={permission.name}>
+                      <input
+                        type="checkbox"
+                        checked={roleDraft.permissions.includes(permission.name)}
+                        onChange={() => togglePermission(permission.name)}
+                      />
+                      <span><strong>{permission.name}</strong><small>{permission.description}</small></span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+              <div className={css.contestFormActions}>
+                <Button variant="primary" type="submit" disabled={busy}>
+                  {editingRoleName === null ? t('Создать роль') : t('Сохранить доступ')}
+                </Button>
+                {editingRoleName !== null && (
+                  <button className={css.textButton} type="button" onClick={resetRoleDraft} disabled={busy}>{t('Отмена')}</button>
+                )}
+              </div>
+            </form>
+
+            <div className={css.roleList}>
+              {roles.map(role => (
+                <article className={css.roleRow} key={role.name}>
+                  <div>
+                    <strong>{role.name}</strong>
+                    <span>{role.description}</span>
+                    <small>{role.assignedUsers} {t('пользователей')} · {role.permissions.length} {t('разрешений')}</small>
+                  </div>
+                  <div className={css.userActions}>
+                    <button className={css.textButton} onClick={() => editRole(role)} disabled={busy}>{t('Настроить доступ')}</button>
+                    {!role.system && (
+                      <button className={css.textButton} onClick={() => void deleteRole(role)} disabled={busy || role.assignedUsers > 0}>{t('Удалить')}</button>
+                    )}
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {activeTab === 'users' && can('user:manage') && (
           <section className={css.panel}>
             <div className={css.panelHeading}>
               <div><h2>{t('Участники')}</h2><p>{t('Поиск по email, роль и количество заявок.')}</p></div>
@@ -461,6 +855,19 @@ export const AdminPage = () => {
               <Button variant="primary" type="submit" disabled={busy}>{t('Найти')}</Button>
               {search && <button className={css.textButton} type="button" onClick={() => { setSearch(''); void loadUsers(); }}>{t('Сбросить')}</button>}
             </form>
+            <div className={css.securityPanel}>
+              <label>
+                <span>{t('Текущий пароль администратора')}</span>
+                <input
+                  type="password"
+                  value={adminPassword}
+                  onChange={event => setAdminPassword(event.target.value)}
+                  autoComplete="current-password"
+                  placeholder={t('Нужен для роли и блокировки')}
+                />
+              </label>
+              <p>{t('Пароль не сохраняется и очищается после успешного изменения.')}</p>
+            </div>
             {loading ? <p className={css.empty}>{t('Загрузка…')}</p> : users.length === 0 ? (
               <p className={css.empty}>{t('Пользователи не найдены.')}</p>
             ) : (
@@ -472,8 +879,31 @@ export const AdminPage = () => {
                       <strong>{user.firstName} {user.lastName}</strong>
                       <span>{user.email}</span>
                     </div>
-                    <span className={`${css.roleBadge} ${user.role === 'ADMIN' ? css.adminBadge : ''}`}>{t(getRoleLabel(user.role))}</span>
+                    <span className={`${css.roleBadge} ${(user.roles ?? [user.role]).includes('ADMIN') ? css.adminBadge : ''}`}>
+                      {(user.roles ?? [user.role]).map(roleName => t(getRoleLabel(roleName))).join(', ')}
+                    </span>
+                    {user.banned && <span className={css.bannedBadge}>{t('Заблокирован')}</span>}
                     <span className={css.userApplications}>{user.applicationsCount} {t('заявок')}</span>
+                    <div className={css.userActions}>
+                      <button className={css.textButton} onClick={() => void toggleUserBanned(user)} disabled={busy}>
+                        {user.banned ? t('Разблокировать') : t('Заблокировать')}
+                      </button>
+                      {can('role:manage') && <div aria-label={t('Роли пользователя')}>
+                        {roles.map(role => (
+                          <label key={role.name}>
+                            <input type="checkbox" checked={(user.roles ?? [user.role]).includes(role.name)} disabled={busy}
+                              onChange={event => {
+                                const current = user.roles ?? [user.role];
+                                const next = event.target.checked
+                                  ? [...current, role.name]
+                                  : current.filter(item => item !== role.name);
+                                if (next.length) void changeUserRoles(user, next);
+                              }} />
+                            {role.name}
+                          </label>
+                        ))}
+                      </div>}
+                    </div>
                   </article>
                 ))}
               </div>

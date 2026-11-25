@@ -2,6 +2,7 @@ package com.example.story.controller;
 
 import com.example.story.dto.errors.ResponseErrorDto;
 import com.example.story.dto.storage.LoadedFile;
+import com.example.story.exception.ResourceNotFoundException;
 import com.example.story.service.EventService;
 import com.example.story.service.WorksService;
 
@@ -27,6 +28,8 @@ public class WorksController {
         try {
             if (eventService.getClosed()) return ResponseEntity.status(HttpStatus.GONE).build();
             else return ResponseEntity.status(HttpStatus.CREATED).body(worksService.create(appId, file));
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ResponseErrorDto(e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ResponseErrorDto(e.getMessage()));
         }
@@ -37,6 +40,8 @@ public class WorksController {
     public ResponseEntity<?> getAllByAppId(@RequestParam Long appId) {
         try {
             return ResponseEntity.ok().body(worksService.obtainAllInfo(appId));
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ResponseErrorDto(e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ResponseErrorDto(e.getMessage()));
         }
@@ -47,6 +52,8 @@ public class WorksController {
     public ResponseEntity<?> getByWorkId(@PathVariable Long workId) {
         try {
             return ResponseEntity.ok().body(worksService.obtainInfo(workId));
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ResponseErrorDto(e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ResponseErrorDto(e.getMessage()));
         }
@@ -58,6 +65,8 @@ public class WorksController {
         try {
             LoadedFile file = worksService.obtainData(workId);
             return ResponseEntity.ok().contentType(MediaType.parseMediaType(file.getContentType())).body(file.getFileData());
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ResponseErrorDto(e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ResponseErrorDto(e.getMessage()));
         }
@@ -72,6 +81,8 @@ public class WorksController {
                 worksService.delete(workId);
                 return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
             }
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ResponseErrorDto(e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ResponseErrorDto(e.getMessage()));
         }

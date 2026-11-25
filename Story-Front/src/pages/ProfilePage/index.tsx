@@ -5,14 +5,16 @@ import { Button } from '../../components/UI/Button';
 import { applicationsApi } from '../../api/applications';
 import { usersApi, AccountData } from '../../api/users';
 import { API_BASE_URL } from '../../api/client';
-import { Application, Contest } from '../../api/applications';
+import { Application, ApplicationMemberUpdate, Contest } from '../../api/applications';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import css from './index.module.scss';
 
 export const ProfilePage = () => {
   const navigate = useNavigate();
-  const { role, signOut } = useAuth();
+  const { permissions, signOut } = useAuth();
+  const canReadApplications = permissions.includes('application:read:own');
+  const canWriteApplications = permissions.includes('application:write:own');
   const { t } = useLanguage();
   const [account, setAccount] = useState<AccountData | null>(null);
   const [applications, setApplications] = useState<Application[]>([]);
@@ -31,6 +33,7 @@ export const ProfilePage = () => {
   const [applicationDraft, setApplicationDraft] = useState({
     name: '', description: '', city: '', organization: '', mentorName: '',
   });
+  const [memberDrafts, setMemberDrafts] = useState<ApplicationMemberUpdate[]>([]);
   const [savingApplication, setSavingApplication] = useState(false);
 
   const fetchApplications = useCallback(async () => {
@@ -60,7 +63,7 @@ export const ProfilePage = () => {
       }
       try {
         const accountPromise = usersApi.getAccountData(token);
-        const participantDataPromise = role === 'PARTICIPANT'
+        const participantDataPromise = canReadApplications
           ? Promise.all([
               applicationsApi.getContests(token),
               applicationsApi.getUserApplications(token),
@@ -104,7 +107,7 @@ export const ProfilePage = () => {
     };
     void load();
     return () => { active = false; };
-  }, [navigate, t, isEditing, role]);
+  }, [navigate, t, isEditing, canReadApplications]);
 
   const goToApplication = () => {
     if (!contests.length) {
@@ -227,12 +230,16 @@ export const ProfilePage = () => {
       organization: application.organization ?? '',
       mentorName: application.mentorName ?? '',
     });
+    setMemberDrafts((application.members ?? []).map(member => ({
+      firstName: member.firstName, lastName: member.lastName, birthDate: member.birthDate,
+    })));
     setEditingApplicationId(application.appId);
   };
 
   const handleCancelApplicationEdit = () => {
     setEditingApplicationId(null);
     setApplicationDraft({ name: '', description: '', city: '', organization: '', mentorName: '' });
+    setMemberDrafts([]);
     setError('');
   };
 
@@ -249,16 +256,18 @@ export const ProfilePage = () => {
       return;
     }
 
-    const members = application.isTeam
-      ? (application.members ?? []).map(member => ({
-          firstName: member.firstName,
-          lastName: member.lastName,
-          birthDate: member.birthDate,
-        }))
-      : [];
+    const members = application.isTeam ? memberDrafts.map(member => ({
+      firstName: member.firstName.trim(), lastName: member.lastName.trim(), birthDate: member.birthDate,
+    })) : [];
 
     if (application.isTeam && members.length === 0) {
-      setError(t('Не удалось обновить заявку'));
+      setError(t('Добавьте хотя бы одного участника команды'));
+      return;
+    }
+    if (application.isTeam && (members.some(member =>
+      !member.firstName || !member.lastName || !member.birthDate)
+      || new Set(members.map(member => `${member.firstName.toLowerCase()}|${member.lastName.toLowerCase()}|${member.birthDate}`)).size !== members.length)) {
+      setError(t('Проверьте данные участников: пустые поля и повторы недопустимы'));
       return;
     }
 
@@ -299,7 +308,9 @@ export const ProfilePage = () => {
     try {
       const response = await applicationsApi.deleteApplication(id, token);
       if (response.status === 204 || response.status === 200) await fetchApplications();
-      else setError(response.error?.message || t('Ошибка при удалении заявки'));
+      else setError(response.status === 410
+        ? t('Приём заявок закрыт. Удаление заявок временно недоступно.')
+        : response.error?.message || t('Ошибка при удалении заявки'));
     } catch {
       setError(t('Ошибка при удалении заявки'));
     }
@@ -330,7 +341,23 @@ export const ProfilePage = () => {
     }
   };
 
-  const getWorkLink = (link: string) => `${API_BASE_URL}${link}`;
+  const downloadWork = async (workId: number, name: string) => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    const response = await fetch(`${API_BASE_URL}/works/${workId}/file`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) {
+      setError(t('Не удалось скачать файл'));
+      return;
+    }
+    const url = URL.createObjectURL(await response.blob());
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = name;
+    link.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
   const visibleApplications = filter
     ? applications.filter(application => application.status === filter)
     : applications;
@@ -342,7 +369,7 @@ export const ProfilePage = () => {
         <section className={css.header}>
           <h1 className={css.title}>{t('Личный кабинет')}</h1>
           <div className={css.headerActions}>
-            {role === 'PARTICIPANT' && <Button variant="secondary" onClick={goToApplication}>+ {t('Подать заявку')}</Button>}
+            {canWriteApplications && <Button variant="secondary" onClick={goToApplication}>+ {t('Подать заявку')}</Button>}
             <Button variant="secondary" onClick={handleLogout}>{t('Выйти')}</Button>
           </div>
         </section>
@@ -413,7 +440,7 @@ export const ProfilePage = () => {
         {passwordMessage && <div className={css.successMessage} role="status">{passwordMessage}</div>}
         {error && <div className={css.errorMessage} role="alert">{error}</div>}
 
-        {role === 'PARTICIPANT' && (
+        {canReadApplications && (
           <>
             <section className={css.stats}>
               <article className={css.statCard}><div className={css.statValue}>{loading ? '…' : stats.total}</div><div className={css.statLabel}>{t('Всего заявок')}</div></article>
@@ -435,7 +462,7 @@ export const ProfilePage = () => {
             {loading ? <div className={css.loadingState}>{t('Загрузка...')}</div> : visibleApplications.length === 0 ? (
               <div className={css.emptyState}>
                 <p className={css.emptyText}>{applications.length === 0 ? t('У вас пока нет заявок') : t('По выбранному фильтру заявок нет')}</p>
-                {applications.length === 0 && <Button variant="primary" onClick={goToApplication}>{t('Подать первую заявку')}</Button>}
+                {applications.length === 0 && canWriteApplications && <Button variant="primary" onClick={goToApplication}>{t('Подать первую заявку')}</Button>}
               </div>
             ) : (
               <div className={css.applicationsList}>
@@ -449,13 +476,13 @@ export const ProfilePage = () => {
                   <div><strong>{t('Работа:')}</strong> {application.name}</div>
                   <div><strong>{t('Описание:')}</strong> {application.description}</div>
                   <div><strong>{t('Файлов:')}</strong> {application.worksCount}</div>
-                  {!!application.linksToWorks?.length && (
+                  {!!application.works?.length && (
                     <div className={css.applicationFiles}>
                       <strong>{t('Файлы:')}</strong>{' '}
-                      {application.linksToWorks.map((link, index) => (
-                        <a key={`${link}-${index}`} href={getWorkLink(link)} target="_blank" rel="noopener noreferrer">
-                          {t('Скачать')} {application.linksToWorks!.length > 1 ? `№${index + 1}` : ''}
-                        </a>
+                      {application.works.map(work => (
+                        <button type="button" key={work.workId} onClick={() => void downloadWork(work.workId, work.name)}>
+                          {t('Скачать')} {work.name}
+                        </button>
                       ))}
                     </div>
                   )}
@@ -495,13 +522,34 @@ export const ProfilePage = () => {
                         <input value={applicationDraft.mentorName} maxLength={100} onChange={event => setApplicationDraft(previous => ({ ...previous, mentorName: event.target.value }))} />
                       </label>
                     </div>
+                    {application.isTeam && (
+                      <div>
+                        <strong>{t('Участники команды')}</strong>
+                        {memberDrafts.map((member, index) => (
+                          <div className={css.applicationEditRow} key={index}>
+                            <input aria-label={t('Имя участника')} value={member.firstName}
+                              onChange={event => setMemberDrafts(previous => previous.map((item, i) =>
+                                i === index ? { ...item, firstName: event.target.value } : item))} />
+                            <input aria-label={t('Фамилия участника')} value={member.lastName}
+                              onChange={event => setMemberDrafts(previous => previous.map((item, i) =>
+                                i === index ? { ...item, lastName: event.target.value } : item))} />
+                            <input aria-label={t('Дата рождения участника')} type="date" value={member.birthDate}
+                              onChange={event => setMemberDrafts(previous => previous.map((item, i) =>
+                                i === index ? { ...item, birthDate: event.target.value } : item))} />
+                            <button type="button" onClick={() => setMemberDrafts(previous => previous.filter((_, i) => i !== index))}>{t('Удалить участника')}</button>
+                          </div>
+                        ))}
+                        <button type="button" onClick={() => setMemberDrafts(previous => [...previous,
+                          { firstName: '', lastName: '', birthDate: '' }])}>{t('Добавить участника')}</button>
+                      </div>
+                    )}
                     <div className={css.applicationEditActions}>
                       <Button type="submit" variant="primary" disabled={savingApplication}>{savingApplication ? t('Сохранение...') : t('Сохранить')}</Button>
                       <Button type="button" variant="secondary" onClick={handleCancelApplicationEdit} disabled={savingApplication}>{t('Отмена')}</Button>
                     </div>
                   </form>
                 )}
-                {(application.status === 'PENDING' || !application.status) && (
+                {canWriteApplications && (application.status === 'PENDING' || !application.status) && (
                   <div className={css.applicationActions}>
                     <button
                       className={css.editBtn}

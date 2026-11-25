@@ -3,20 +3,22 @@ package com.example.story.service;
 import com.example.story.dto.applications.*;
 import com.example.story.dto.works.ResponseWorkDto;
 import com.example.story.entity.*;
+import com.example.story.exception.ResourceNotFoundException;
 import com.example.story.mapper.ApplicationMapper;
 import com.example.story.mapper.MemberMapper;
 import com.example.story.mapper.WorkMapper;
 import com.example.story.configuration.StoryProperties;
 import com.example.story.repository.*;
 
-import com.example.story.service.storage.MinioStorageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 
 import static com.example.story.utilities.Helpers.getCurrentUser;
 import static com.example.story.utilities.Helpers.validateAge;
@@ -35,7 +37,7 @@ public class ApplicationsService {
     private final ApplicationMapper applicationMapper;
     private final MemberMapper memberMapper;
     private final WorkMapper workMapper;
-    private final MinioStorageService storageService;
+    private final StorageCleanupService storageCleanupService;
     private final EventService eventService;
 
     public List<ResponseApplicationDto> obtainAll() {
@@ -85,15 +87,12 @@ public class ApplicationsService {
 
         UserEntity user = getUserAndCheckConditions(conId, dto);
 
-        ContestEntity contest = contestRepository.findById(conId).orElseThrow(() -> new RuntimeException("Contest not found"));
+        ContestEntity contest = contestRepository.findById(conId)
+                .orElseThrow(() -> new ResourceNotFoundException("Contest not found"));
 
-        if (dto.getIsTeam()) {
-            for (RequestApplicationMemberDto memberDto : dto.getMembers()) {
-                if (!validateAge(memberDto.getBirthDate(), contest.getStartAge(), contest.getEndAge())) {
-                    throw new RuntimeException("The member's age is not suitable for this nomination");
-                }
-            }
-            if (!dto.getIsCurator()) {
+        if (Boolean.TRUE.equals(dto.getIsTeam())) {
+            validateMembers(dto.getMembers(), contest);
+            if (Boolean.FALSE.equals(dto.getIsCurator())) {
                 if (!validateAge(user.getBirthDate(), contest.getStartAge(), contest.getEndAge())) {
                     throw new RuntimeException("The member's age is not suitable for this nomination");
                 }
@@ -110,7 +109,7 @@ public class ApplicationsService {
         application.setUserEntity(user);
         ApplicationEntity savedApplication = applicationRepository.save(application);
 
-        if (dto.getIsTeam()) {
+        if (Boolean.TRUE.equals(dto.getIsTeam())) {
             for (RequestApplicationMemberDto memberDto : dto.getMembers()) {
                 MemberEntity member = memberMapper.entityFromApplicationMemberDto(memberDto);
                 member.setApplicationEntity(savedApplication);
@@ -122,8 +121,27 @@ public class ApplicationsService {
     }
 
     public void update(Long appId, RequestApplicationDto dto) {
+        ensureApplicationsOpen();
         ApplicationEntity application = getApplicationAndCheckAccess(appId);
         ContestEntity contest = application.getContestEntity();
+
+        if (dto.getIsTeam() != null && !dto.getIsTeam().equals(application.getIsTeam())) {
+            throw new IllegalArgumentException("Application type cannot be changed");
+        }
+        if (dto.getIsCurator() != null && !dto.getIsCurator().equals(application.getIsCurator())) {
+            throw new IllegalArgumentException("Curator flag cannot be changed");
+        }
+
+        if (dto.getName() != null) {
+            if (dto.getName().length() > storyProperties.getApplication().getNameSize()) {
+                throw new IllegalArgumentException("Application name length bigger than "
+                        + storyProperties.getApplication().getNameSize() + " characters");
+            }
+            if (applicationRepository.existsByNameAndContestEntityIdAndIdNot(
+                    dto.getName(), contest.getId(), appId)) {
+                throw new IllegalArgumentException("Application with this name already exists");
+            }
+        }
 
         if (dto.getName() != null) application.setName(dto.getName());
         if (dto.getDescription() != null) application.setDescription(dto.getDescription());
@@ -131,25 +149,25 @@ public class ApplicationsService {
         if (dto.getOrganization() != null) application.setOrganization(dto.getOrganization());
         if (dto.getMentorName() != null) application.setMentor(dto.getMentorName());
 
-        ApplicationEntity savedApplication = applicationRepository.save(application);
-
         if (application.getIsTeam()) {
-            if (dto.getMembers().isEmpty()) throw new RuntimeException("Team must have at least one new member");
-            else {
+            if (dto.getMembers() != null) {
+                validateMembers(dto.getMembers(), contest);
                 memberRepository.deleteByApplicationId(appId);
                 for (RequestApplicationMemberDto memberDto : dto.getMembers()) {
-                    if (!validateAge(memberDto.getBirthDate(), contest.getStartAge(), contest.getEndAge())) {
-                        throw new RuntimeException("The member's age is not suitable for this nomination");
-                    }
                     MemberEntity member = memberMapper.entityFromApplicationMemberDto(memberDto);
-                    member.setApplicationEntity(savedApplication);
+                    member.setApplicationEntity(application);
                     memberRepository.save(member);
                 }
             }
+        } else if (dto.getMembers() != null && !dto.getMembers().isEmpty()) {
+            throw new IllegalArgumentException("Individual application cannot contain team members");
         }
+
+        applicationRepository.save(application);
     }
 
     public void delete(Long appId) {
+        ensureApplicationsOpen();
         ApplicationEntity entity = getApplicationAndCheckAccess(appId);
 
         for (MemberEntity member : entity.getMemberEntities()) {
@@ -157,11 +175,7 @@ public class ApplicationsService {
         }
 
         for (WorkEntity work : entity.getWorkEntities()) {
-            try {
-                storageService.deleteFile(work.getFileName());
-            } catch (IOException e) {
-                System.out.println("Error while deleting: " + work.getFileName());
-            }
+            storageCleanupService.schedule(work.getFileName());
             workRepository.delete(work);
         }
 
@@ -171,12 +185,9 @@ public class ApplicationsService {
     // --- вспомогательные методы ---
 
     private ApplicationEntity getApplicationAndCheckAccess(Long appId) {
-        ApplicationEntity app = applicationRepository.findById(appId).orElseThrow(() -> new RuntimeException("Application not found"));
         UserEntity user = getCurrentUser(userRepository);
-        if (!app.getUserEntity().getId().equals(user.getId())) {
-            throw new RuntimeException("Application not found");
-        }
-        return app;
+        return applicationRepository.findByIdAndUserEntityId(appId, user.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Application not found"));
     }
 
     private UserEntity getUserAndCheckConditions(Long conId, RequestApplicationDto dto) {
@@ -189,12 +200,41 @@ public class ApplicationsService {
                 applicationRepository.countByUserIdAndContestId(user.getId(), conId) >= storyProperties.getContest().getApplicationCount()) {
             throw new RuntimeException("User already has max applications for this contest");
         }
-        if (dto.getName().length() > storyProperties.getWork().getNameSize()) {
+        if (dto.getName().length() > storyProperties.getApplication().getNameSize()) {
             throw new RuntimeException("Application name length bigger than " + storyProperties.getApplication().getNameSize() + " characters");
         }
         if (applicationRepository.findByNameAndContestId(dto.getName(), conId).isPresent()) {
             throw new RuntimeException("Application with this name is already exist");
         }
         return user;
+    }
+
+    private void validateMembers(List<RequestApplicationMemberDto> members, ContestEntity contest) {
+        if (members == null || members.isEmpty()) {
+            throw new IllegalArgumentException("Team must have at least one new member");
+        }
+        Set<String> uniqueMembers = new HashSet<>();
+        for (RequestApplicationMemberDto member : members) {
+            if (member.getFirstName() == null || member.getFirstName().isBlank()
+                    || member.getLastName() == null || member.getLastName().isBlank()
+                    || member.getBirthDate() == null) {
+                throw new IllegalArgumentException("Team member data is incomplete");
+            }
+            if (!validateAge(member.getBirthDate(), contest.getStartAge(), contest.getEndAge())) {
+                throw new IllegalArgumentException("The member's age is not suitable for this nomination");
+            }
+            String memberKey = member.getFirstName().trim().toLowerCase(Locale.ROOT) + '\n'
+                    + member.getLastName().trim().toLowerCase(Locale.ROOT) + '\n'
+                    + member.getBirthDate();
+            if (!uniqueMembers.add(memberKey)) {
+                throw new IllegalArgumentException("Team contains duplicate members");
+            }
+        }
+    }
+
+    private void ensureApplicationsOpen() {
+        if (eventService.isApplicationsClosed()) {
+            throw new IllegalStateException("Application submission is closed");
+        }
     }
 }

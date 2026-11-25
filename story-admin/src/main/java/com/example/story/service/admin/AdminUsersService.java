@@ -1,6 +1,7 @@
 package com.example.story.service.admin;
 
 import com.example.story.dto.users.RequestUserAccessDto;
+import com.example.story.dto.users.RequestUserBannedDto;
 import com.example.story.dto.users.RequestUserPasswordDto;
 import com.example.story.dto.users.RequestUserRolesDto;
 import com.example.story.dto.users.ResponseUserDataAdminDto;
@@ -50,6 +51,7 @@ public class AdminUsersService {
         List<ResponseUserDataAdminDto> result = new ArrayList<>();
         for (UserEntity entity : users) {
             ResponseUserDataAdminDto dto = userMapper.entityToUserDataAdminDto(entity);
+            dto.setRoles(userRepository.findRoleNamesByUserId(entity.getId()));
             dto.setApplicationsCount(applicationRepository.countByUserId(dto.getUserId()).intValue());
             result.add(dto);
         }
@@ -67,15 +69,20 @@ public class AdminUsersService {
         requireAuthority(USER_MANAGE);
 
         UserEntity user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
-        return userMapper.entityToUserDataAdminDto(user);
+        ResponseUserDataAdminDto dto = userMapper.entityToUserDataAdminDto(user);
+        dto.setRoles(userRepository.findRoleNamesByUserId(user.getId()));
+        return dto;
     }
 
     public void updateUserPassword(Long userId, RequestUserPasswordDto dto) {
         UserEntity admin = getCurrentUser(userRepository);
         requireAuthority(USER_MANAGE);
-        if (!passwordEncoder.matches(dto.getCurrentPassword(), admin.getPassword())) throw new RuntimeException("Wrong password");
+        if (!passwordEncoder.matches(dto.getCurrentPassword(), admin.getPassword())) {
+            throw new IllegalArgumentException("Неверный текущий пароль администратора");
+        }
 
-        UserEntity user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
         user.setPassword(passwordEncoder.encode(dto.getNewPassword()));
         userRepository.save(user);
     }
@@ -83,22 +90,51 @@ public class AdminUsersService {
     public void updateUserAccess(Long userId, RequestUserAccessDto dto) {
         UserEntity admin = getCurrentUser(userRepository);
         requireAuthority(USER_MANAGE);
-        if (!passwordEncoder.matches(dto.getCurrentPassword(), admin.getPassword())) throw new RuntimeException("Wrong password");
+        if (!passwordEncoder.matches(dto.getCurrentPassword(), admin.getPassword())) {
+            throw new IllegalArgumentException("Неверный текущий пароль администратора");
+        }
 
-        UserEntity user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
+        boolean previousValue = Boolean.TRUE.equals(user.getClosedAccess());
         user.setClosedAccess(dto.getAccess());
         userRepository.save(user);
+        userRepository.auditSecurityChange(
+                admin.getId(), user.getId(), "closed_access",
+                previousValue, Boolean.TRUE.equals(dto.getAccess()));
+    }
+
+    public void updateUserBanned(Long userId, RequestUserBannedDto dto) {
+        UserEntity admin = getCurrentUser(userRepository);
+        requireAuthority(USER_MANAGE);
+        if (!passwordEncoder.matches(dto.getCurrentPassword(), admin.getPassword())) {
+            throw new IllegalArgumentException("Неверный текущий пароль администратора");
+        }
+        if (admin.getId().equals(userId) && Boolean.TRUE.equals(dto.getBanned())) {
+            throw new IllegalArgumentException("Администратор не может заблокировать собственную учётную запись");
+        }
+
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
+        boolean previousValue = Boolean.TRUE.equals(user.getBanned());
+        boolean nextValue = Boolean.TRUE.equals(dto.getBanned());
+        if (previousValue == nextValue) return;
+
+        user.setBanned(nextValue);
+        userRepository.save(user);
+        userRepository.auditSecurityChange(
+                admin.getId(), user.getId(), "banned", previousValue, nextValue);
     }
 
     public void updateUserRoles(Long userId, RequestUserRolesDto dto) {
         requireAuthority(ROLE_MANAGE);
         UserEntity admin = getCurrentUser(userRepository);
         if (!passwordEncoder.matches(dto.getCurrentPassword(), admin.getPassword())) {
-            throw new IllegalArgumentException("Wrong password");
+            throw new IllegalArgumentException("Неверный текущий пароль администратора");
         }
 
         UserEntity target = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
         Set<String> requestedRoles = new LinkedHashSet<>();
         dto.getRoles().stream()
                 .map(String::trim)
@@ -108,14 +144,14 @@ public class AdminUsersService {
 
         Set<String> knownRoles = new LinkedHashSet<>(userRepository.findAllRoleNames());
         if (!knownRoles.containsAll(requestedRoles)) {
-            throw new IllegalArgumentException("Unknown role requested");
+            throw new IllegalArgumentException("Указана неизвестная роль");
         }
 
         List<String> previousRoles = userRepository.findRoleNamesByUserId(userId);
         if (previousRoles.contains("ADMIN")
                 && !requestedRoles.contains("ADMIN")
                 && userRepository.countUsersWithRole("ADMIN") <= 1) {
-            throw new IllegalStateException("The last administrator cannot lose the ADMIN role");
+            throw new IllegalStateException("Нельзя снять роль у последнего администратора");
         }
 
         userRepository.removeAllRoles(userId);

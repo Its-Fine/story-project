@@ -37,6 +37,8 @@ Kubernetes для текущего развёртывания на одном с
 | `Story-Data/tools` | утилиты запуска, логов, обновления и SSH |
 | `Jenkinsfile` и `ci` | автоматическая проверка и развёртывание |
 | `TASKS.md` | актуальный план разработки |
+| `docs/postman` | актуальная коллекция запросов и инструкция Postman |
+| `docs/openapi.md` | адреса машинно-читаемых спецификаций API |
 
 ## Кто за что отвечает
 
@@ -86,4 +88,5 @@ npm run build
 ```
 
 Подробности конфигурации находятся в `docs/configuration.md`, а порядок безопасного
-обновления сервера — в `docs/maintenance.md` и `docs/ci-cd.md`.
+обновления сервера — в `docs/maintenance.md` и `docs/ci-cd.md`. Проверка API через
+Gateway описана в `docs/postman/README.md`.

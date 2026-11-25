@@ -10,6 +10,7 @@ import { LanguageSwitcher } from './components/Layout/LanguageSwitcher';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LanguageProvider } from './contexts/LanguageContext';
 import './styles/global.scss';
+import { adminPermissions } from './utils/access';
 
 const AppContent = () => {
   const { role, initialized } = useAuth();
@@ -26,7 +27,7 @@ const AppContent = () => {
       <Routes>
         <Route path="/" element={<MainPage />} />
         <Route path="/application/:contestId" element={
-          <ProtectedRoute requiredRole="PARTICIPANT">
+          <ProtectedRoute requiredPermission="application:write:own">
             <ApplicationPage />
           </ProtectedRoute>
         } />
@@ -36,7 +37,7 @@ const AppContent = () => {
           </ProtectedRoute>
         } />
         <Route path="/admin" element={
-          <ProtectedRoute requiredRole="ADMIN">
+          <ProtectedRoute requiredAnyPermissions={adminPermissions}>
             <AdminPage />
           </ProtectedRoute>
         } />

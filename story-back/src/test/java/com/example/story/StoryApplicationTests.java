@@ -8,6 +8,7 @@ import com.example.story.entity.WorkEntity;
 import com.example.story.repository.ApplicationRepository;
 import com.example.story.repository.ContestRepository;
 import com.example.story.repository.EventSettingsRepository;
+import com.example.story.repository.MemberRepository;
 import com.example.story.repository.UserRepository;
 import com.example.story.repository.WorkRepository;
 import com.example.story.testsupport.JwtTokens;
@@ -31,6 +32,7 @@ import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -45,6 +47,7 @@ class StoryApplicationTests {
     @Autowired ApplicationRepository applicationRepository;
     @Autowired ContestRepository contestRepository;
     @Autowired WorkRepository workRepository;
+    @Autowired MemberRepository memberRepository;
     @Autowired PasswordEncoder passwordEncoder;
     @PersistenceContext EntityManager entityManager;
     UserEntity user;
@@ -215,6 +218,154 @@ class StoryApplicationTests {
                 .andExpect(jsonPath("$[0].rejectionReason").value("Incomplete description"))
                 .andExpect(jsonPath("$[0].works[0].rate").value(87))
                 .andExpect(jsonPath("$[0].works[0].isRated").value(true));
+    }
+
+    @Test
+    @Transactional
+    void participantCannotReadChangeOrDeleteAnotherUsersApplicationAndWork() throws Exception {
+        UserEntity owner = new UserEntity();
+        owner.setEmail("foreign-owner@example.com");
+        owner.setPassword("unused-hash");
+        owner.setFirstName("Foreign");
+        owner.setLastName("Owner");
+        owner.setBirthDate(LocalDate.of(2000, 1, 1));
+        owner.setConsent(true);
+        owner.setParentConsent(false);
+        owner = users.saveAndFlush(owner);
+
+        ContestEntity contest = contestRepository.findAll().getFirst();
+        ApplicationEntity application = new ApplicationEntity();
+        application.setName("Foreign application");
+        application.setDescription("Must remain private");
+        application.setCity("Moscow");
+        application.setIsTeam(false);
+        application.setIsCurator(false);
+        application.setUserEntity(owner);
+        application.setContestEntity(contest);
+        application = applicationRepository.saveAndFlush(application);
+
+        WorkEntity work = new WorkEntity();
+        work.setName("foreign.png");
+        work.setFileName("foreign-storage-key");
+        work.setFileSize(1024);
+        work.setApplicationEntity(application);
+        work = workRepository.saveAndFlush(work);
+
+        String updateBody = """
+                {
+                  "name": "Stolen application",
+                  "description": "Must not change",
+                  "city": "Moscow"
+                }
+                """;
+
+        mvc.perform(get("/api/v1/applications/{appId}", application.getId())
+                        .header("Authorization", "Bearer " + access))
+                .andExpect(status().isNotFound());
+        mvc.perform(put("/api/v1/applications/{appId}", application.getId())
+                        .header("Authorization", "Bearer " + access)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updateBody))
+                .andExpect(status().isNotFound());
+        mvc.perform(delete("/api/v1/applications/{appId}", application.getId())
+                        .header("Authorization", "Bearer " + access))
+                .andExpect(status().isNotFound());
+
+        mvc.perform(get("/api/v1/works/{workId}", work.getId())
+                        .header("Authorization", "Bearer " + access))
+                .andExpect(status().isNotFound());
+        mvc.perform(get("/api/v1/works/{workId}/file", work.getId())
+                        .header("Authorization", "Bearer " + access))
+                .andExpect(status().isNotFound());
+        mvc.perform(delete("/api/v1/works/{workId}", work.getId())
+                        .header("Authorization", "Bearer " + access))
+                .andExpect(status().isNotFound());
+
+        assertThat(applicationRepository.findById(application.getId())).isPresent();
+        assertThat(workRepository.findById(work.getId())).isPresent();
+    }
+
+    @Test
+    @Transactional
+    void groupApplicationPersistsValidatedMembers() throws Exception {
+        ContestEntity contest = contestRepository.findAll().getFirst();
+
+        mvc.perform(post("/api/v1/applications")
+                        .param("conId", contest.getId().toString())
+                        .header("Authorization", "Bearer " + access)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "Validated team",
+                                  "description": "A group application",
+                                  "city": "Moscow",
+                                  "members": [
+                                    {
+                                      "firstName": "Team",
+                                      "lastName": "Member",
+                                      "birthDate": "2000-01-01"
+                                    }
+                                  ],
+                                  "isTeam": true,
+                                  "isCurator": false
+                                }
+                                """))
+                .andExpect(status().isCreated());
+
+        ApplicationEntity application = applicationRepository
+                .findByNameAndContestId("Validated team", contest.getId())
+                .orElseThrow();
+        assertThat(memberRepository.findByApplicationId(application.getId()))
+                .singleElement()
+                .satisfies(member -> {
+                    assertThat(member.getFirstName()).isEqualTo("Team");
+                    assertThat(member.getLastName()).isEqualTo("Member");
+                });
+    }
+
+    @Test
+    @Transactional
+    void groupApplicationRejectsIncompleteAndDuplicateMembers() throws Exception {
+        ContestEntity contest = contestRepository.findAll().getFirst();
+        String duplicateMembers = """
+                {
+                  "name": "Invalid team",
+                  "description": "Duplicate members",
+                  "city": "Moscow",
+                  "members": [
+                    {"firstName": "Same", "lastName": "Member", "birthDate": "2000-01-01"},
+                    {"firstName": " same ", "lastName": " member ", "birthDate": "2000-01-01"}
+                  ],
+                  "isTeam": true,
+                  "isCurator": false
+                }
+                """;
+
+        mvc.perform(post("/api/v1/applications")
+                        .param("conId", contest.getId().toString())
+                        .header("Authorization", "Bearer " + access)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(duplicateMembers))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Team contains duplicate members"));
+
+        mvc.perform(post("/api/v1/applications")
+                        .param("conId", contest.getId().toString())
+                        .header("Authorization", "Bearer " + access)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "Incomplete team",
+                                  "description": "Missing first name",
+                                  "city": "Moscow",
+                                  "members": [
+                                    {"firstName": " ", "lastName": "Member", "birthDate": "2000-01-01"}
+                                  ],
+                                  "isTeam": true,
+                                  "isCurator": false
+                                }
+                                """))
+                .andExpect(status().isBadRequest());
     }
 
 }

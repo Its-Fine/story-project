@@ -101,6 +101,10 @@ docker compose up -d --force-recreate story-back
 - Допустимые MIME-типы загружаемых работ задаёт
   `STORY_WORK_ALLOWED_CONTENT_TYPES` через запятую. Проверка выполняется
   на backend; изменение настройки само по себе не проверяет содержимое файла.
+- `story-back` повторяет отложенное удаление объектов MinIO каждые 30 секунд.
+  Интервал можно изменить внутренним Spring-параметром
+  `story.storage-cleanup.interval-ms`; уменьшать его в production без наблюдения
+  за нагрузкой на PostgreSQL и MinIO не следует.
 
 Все эти параметры находятся в шаблонах `Story-Data/.env*.example`.
 Переносимые в контейнер значения перечислены в `Story-Data/docker-compose.yml`.

@@ -1,6 +1,7 @@
 package com.example.story.service.admin;
 
 import com.example.story.dto.users.RequestUserRolesDto;
+import com.example.story.dto.users.RequestUserBannedDto;
 import com.example.story.entity.UserEntity;
 import com.example.story.mapper.UserMapper;
 import com.example.story.repository.ApplicationRepository;
@@ -41,7 +42,9 @@ class AdminUsersServiceTest {
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(
                         admin.getEmail(), null,
-                        List.of(new SimpleGrantedAuthority("role:manage"))));
+                        List.of(
+                                new SimpleGrantedAuthority("role:manage"),
+                                new SimpleGrantedAuthority("user:manage"))));
         when(users.findByEmail(admin.getEmail())).thenReturn(Optional.of(admin));
         when(passwords.matches("current-password", admin.getPassword())).thenReturn(true);
         when(users.findAllRoleNames()).thenReturn(List.of("ADMIN", "PARTICIPANT"));
@@ -61,7 +64,7 @@ class AdminUsersServiceTest {
 
         assertThatThrownBy(() -> service.updateUserRoles(1L, request))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("last administrator");
+                .hasMessageContaining("последнего администратора");
 
         verify(users, never()).removeAllRoles(1L);
     }
@@ -81,6 +84,36 @@ class AdminUsersServiceTest {
         verify(users).assignRole(2L, "PARTICIPANT");
         verify(users).auditRoleChange(1L, 2L, "PARTICIPANT", "ADMIN,PARTICIPANT");
         verify(users).save(participant);
+    }
+
+    @Test
+    void banningUserUpdatesAccountAndWritesAudit() {
+        UserEntity participant = new UserEntity();
+        participant.setId(2L);
+        participant.setBanned(false);
+        when(users.findById(2L)).thenReturn(Optional.of(participant));
+
+        RequestUserBannedDto request = new RequestUserBannedDto();
+        request.setCurrentPassword("current-password");
+        request.setBanned(true);
+
+        service.updateUserBanned(2L, request);
+
+        verify(users).save(participant);
+        verify(users).auditSecurityChange(1L, 2L, "banned", false, true);
+    }
+
+    @Test
+    void administratorCannotBanOwnAccount() {
+        RequestUserBannedDto request = new RequestUserBannedDto();
+        request.setCurrentPassword("current-password");
+        request.setBanned(true);
+
+        assertThatThrownBy(() -> service.updateUserBanned(1L, request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("собственную учётную запись");
+
+        verify(users, never()).save(admin);
     }
 
     private RequestUserRolesDto request(Set<String> roles) {

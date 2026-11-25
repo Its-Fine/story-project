@@ -2,6 +2,7 @@ package com.example.story.controller.admin;
 
 import com.example.story.dto.errors.ResponseErrorDto;
 import com.example.story.dto.users.RequestUserAccessDto;
+import com.example.story.dto.users.RequestUserBannedDto;
 import com.example.story.dto.users.RequestUserPasswordDto;
 import com.example.story.dto.users.RequestUserRolesDto;
 import com.example.story.service.admin.AdminUsersService;
@@ -80,6 +81,17 @@ public class AdminUsersController {
                                               @RequestBody @Validated RequestUserRolesDto dto) {
         try {
             adminUsersService.updateUserRoles(userId, dto);
+            return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ResponseErrorDto(e.getMessage()));
+        }
+    }
+
+    @PutMapping("/{userId}/banned")
+    public ResponseEntity<?> putBannedByUserId(@PathVariable Long userId,
+                                               @RequestBody @Validated RequestUserBannedDto dto) {
+        try {
+            adminUsersService.updateUserBanned(userId, dto);
             return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ResponseErrorDto(e.getMessage()));

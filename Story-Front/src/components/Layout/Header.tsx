@@ -5,13 +5,15 @@ import { getRoleLabel } from '../../utils/roleLabels';
 import { authApi } from '../../api/auth';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { canOpenAdmin } from '../../utils/access';
 
 interface HeaderProps {
   role?: string | null;
 }
 
 export const Header = ({ role }: HeaderProps) => {
-  const isAdmin = role === 'ADMIN';
+  const { permissions } = useAuth();
+  const isAdmin = canOpenAdmin(permissions);
   const navigate = useNavigate();
   const { signOut } = useAuth();
   const { t } = useLanguage();

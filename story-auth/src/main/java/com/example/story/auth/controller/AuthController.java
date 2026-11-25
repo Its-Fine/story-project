@@ -138,8 +138,13 @@ public class AuthController {
 
     @GetMapping("/me")
     public ResponseEntity<?> getMe(Authentication authentication) {
-        String role = authentication.getAuthorities().iterator().next().getAuthority().substring("ROLE_".length());
-        return ResponseEntity.ok(Map.of("email", authentication.getName(), "role", role));
+        return authUserRepository.findByEmail(authentication.getName())
+                .map(user -> ResponseEntity.ok(Map.of(
+                        "email", user.getEmail(),
+                        "role", user.getRole(),
+                        "roles", authUserRepository.findRoleNamesByUserId(user.getId()),
+                        "permissions", authUserRepository.findPermissionNamesByUserId(user.getId()))))
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     public static class ErrorDto {

@@ -41,10 +41,6 @@ export interface ApplicationMemberUpdate {
   birthDate: string;
 }
 
-export interface ApplicationsResponse {
-  results: Application[];
-}
-
 export interface Contest {
   conId: number;
   name: string;
@@ -64,24 +60,6 @@ export interface SendApplicationRequest {
   isCurator: boolean;
 }
 
-export interface ApproveApplicationsRequest {
-  application_ids: number[];
-}
-
-export interface RejectApplicationRequest {
-  application_id: number;
-  rejection_reason: string;
-}
-
-export interface DeleteApplicationRequest {
-  application_id: number;
-}
-
-export interface RateApplicationRequest {
-  application_id: number;
-  rates: any;
-}
-
 export interface UpdateApplicationRequest {
   name: string;
   description: string;
@@ -89,10 +67,6 @@ export interface UpdateApplicationRequest {
   organization?: string;
   mentorName?: string;
   members?: ApplicationMemberUpdate[];
-}
-
-export interface UpdateApplicationResponse {
-  link_to_file: string;
 }
 
 export const applicationsApi = {
@@ -111,76 +85,11 @@ export const applicationsApi = {
       token,
     }),
 
-  getAllPending: (contestId: string, token: string) =>
-    apiClient<ApplicationsResponse>({
-      api: '/applications/all/pending',
-      method: 'GET',
-      token,
-      customHeaders: {
-        'X-Contest-Id': contestId,
-      },
-    }),
-
-  approveApplications: (data: ApproveApplicationsRequest, contestId: string, token: string) =>
-    apiClient({
-      api: '/applications/approve',
-      method: 'PUT',
-      values: data,
-      token,
-      customHeaders: {
-        'X-Contest-Id': contestId,
-      },
-    }),
-
   deleteApplication: (appId: number, token: string) =>
     apiClient({
       api: `/applications/${appId}`,
       method: 'DELETE',
       token,
-    }),
-
-  rateApplication: (data: RateApplicationRequest, contestId: string, token: string) =>
-    apiClient({
-      api: '/applications/rate',
-      method: 'POST',
-      values: data,
-      token,
-      customHeaders: {
-        'X-Contest-Id': contestId,
-      },
-    }),
-
-  updateRate: (data: RateApplicationRequest, contestId: string, token: string) =>
-    apiClient({
-      api: '/applications/rate/update',
-      method: 'PATCH',
-      values: data,
-      token,
-      customHeaders: {
-        'X-Contest-Id': contestId,
-      },
-    }),
-
-  rejectApplication: (data: RejectApplicationRequest, contestId: string, token: string) =>
-    apiClient({
-      api: '/applications/reject',
-      method: 'PATCH',
-      values: data,
-      token,
-      customHeaders: {
-        'X-Contest-Id': contestId,
-      },
-    }),
-
-  sendApplication: (data: SendApplicationRequest, contestId: string, token: string) =>
-    apiClient({
-      api: '/applications/send',
-      method: 'POST',
-      values: data,
-      token,
-      customHeaders: {
-        'X-Contest-Id': contestId,
-      },
     }),
 
   updateApplication: (appId: number, data: UpdateApplicationRequest, token: string) =>
@@ -198,33 +107,4 @@ export const applicationsApi = {
       token,
     }),
 
-  getAllAccepted: (contestId: string, token: string) =>
-    apiClient<ApplicationsResponse>({
-      api: '/applications/all/accepted',
-      method: 'GET',
-      token,
-      customHeaders: {
-        'X-Contest-Id': contestId,
-      },
-    }),
-
-  getAllRated: (contestId: string, token: string) =>
-    apiClient<any[]>({
-      api: '/applications/all/rate',
-      method: 'GET',
-      token,
-      customHeaders: {
-        'X-Contest-Id': contestId,
-      },
-    }),
-
-  getStats: (contestId: string, token: string) =>
-    apiClient({
-      api: '/applications/all/stats',
-      method: 'GET',
-      token,
-      customHeaders: {
-        'X-Contest-Id': contestId,
-      },
-    }),
 };

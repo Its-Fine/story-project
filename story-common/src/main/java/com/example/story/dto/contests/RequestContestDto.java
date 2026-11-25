@@ -27,6 +27,6 @@ public class RequestContestDto {
 
     @AssertTrue(groups = {Group.Create.class, Group.Update.class}, message = "End age cannot be less than start age")
     private boolean isParamsCorrect() {
-        return endAge >= startAge;
+        return startAge == null || endAge == null || endAge >= startAge;
     }
 }

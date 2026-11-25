@@ -84,4 +84,17 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
                          @Param("targetId") Long targetId,
                          @Param("previousRoles") String previousRoles,
                          @Param("newRoles") String newRoles);
+
+    @Modifying
+    @Transactional
+    @Query(value = """
+            INSERT INTO user_security_audit
+                (actor_user_id, target_user_id, setting_name, previous_value, new_value)
+            VALUES (:actorId, :targetId, :settingName, :previousValue, :newValue)
+            """, nativeQuery = true)
+    void auditSecurityChange(@Param("actorId") Long actorId,
+                             @Param("targetId") Long targetId,
+                             @Param("settingName") String settingName,
+                             @Param("previousValue") boolean previousValue,
+                             @Param("newValue") boolean newValue);
 }

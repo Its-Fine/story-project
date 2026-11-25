@@ -5,6 +5,7 @@ import lombok.Data;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 public class ResponseUserDataAdminDto {
@@ -12,6 +13,7 @@ public class ResponseUserDataAdminDto {
     private String email;
 
     private String role;
+    private List<String> roles;
     private Boolean closedAccess;
     private Boolean banned;
 
