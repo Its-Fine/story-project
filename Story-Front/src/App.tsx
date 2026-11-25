@@ -10,6 +10,7 @@ import { LanguageSwitcher } from './components/Layout/LanguageSwitcher';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LanguageProvider } from './contexts/LanguageContext';
 import './styles/global.scss';
+import { adminPermissions } from './utils/access';
 
 const AppContent = () => {
   const { role, initialized } = useAuth();
@@ -36,7 +37,7 @@ const AppContent = () => {
           </ProtectedRoute>
         } />
         <Route path="/admin" element={
-          <ProtectedRoute requiredRole="ADMIN">
+          <ProtectedRoute requiredAnyPermissions={adminPermissions}>
             <AdminPage />
           </ProtectedRoute>
         } />

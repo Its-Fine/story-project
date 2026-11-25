@@ -1,16 +1,12 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { DecorLines } from '../../components/Layout/DecorLines';
 import { Notification } from '../../components/UI/Notification';
-import { applicationsApi } from '../../api/applications';
+import { applicationsApi, Contest } from '../../api/applications';
+import { usersApi } from '../../api/users';
 import { storageApi } from '../../api/storage';
 import { useLanguage } from '../../contexts/LanguageContext';
 import css from './index.module.scss';
-
-interface Nomination {
-  id: number;
-  name: string;
-}
 
 const createEmptyFormData = () => ({
   firstName: '',
@@ -65,6 +61,7 @@ export const ApplicationPage = () => {
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [isUploading, setIsUploading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [notification, setNotification] = useState<{
     show: boolean;
     message: string;
@@ -79,46 +76,25 @@ export const ApplicationPage = () => {
     const token = localStorage.getItem('token');
     if (!token) {
       navigate('/');
+      return;
     }
-  }, [navigate]);
+    void Promise.all([applicationsApi.getContests(token), usersApi.getAccountData(token)]).then(([catalogue, account]) => {
+      if (catalogue.data) setContests(catalogue.data);
+      else showNotification(catalogue.error?.message || t('Не удалось загрузить номинации'), 'error');
+      if (account.data) {
+        setFormData(previous => ({
+          ...previous,
+          firstName: account.data!.firstName,
+          lastName: account.data!.lastName,
+          email: account.data!.email,
+          birthDate: account.data!.birthDate,
+        }));
+      }
+    });
+  }, [navigate, t]);
 
-  const nominationsByAge = useMemo(() => ({
-    junior: {
-      min: 10, max: 13,
-      list: [
-        { id: 1, name: 'Графический дизайн (плакат, календарь, открытка, упаковка и др.)' },
-        { id: 2, name: 'Иллюстрация (авторская графика, выполненная различными художественными материалами)' },
-        { id: 3, name: 'Арт-дизайн (проекты, соединяющие в себе принципы дизайн-проектирования и традиционного художественного творчества)' },
-        { id: 4, name: 'Туристический сувенир (современное прочтение традиционных ремесел и народных промыслов в сувенирной продукции)' }
-      ]
-    },
-    middle: {
-      min: 14, max: 17,
-      list: [
-        { id: 5, name: 'Дизайн костюма (коллекции авторской одежды)' },
-        { id: 6, name: 'Графический дизайн (плакат, календарь, открытка, упаковка и др.)' },
-        { id: 7, name: 'Иллюстрация (авторская графика, выполненная различными художественными материалами)' },
-        { id: 8, name: 'Арт-дизайн (проекты, соединяющие в себе принципы дизайн-проектирования и традиционного художественного творчества)' },
-        { id: 9, name: 'Туристический сувенир (современное прочтение традиционных ремесел и народных промыслов в сувенирной продукции)' },
-        { id: 10, name: 'Диджитал-арт и цифровая живопись' }
-      ]
-    },
-    senior: {
-      min: 18, max: 35,
-      list: [
-        { id: 11, name: 'Дизайн костюма (коллекции авторской одежды эскизы, макеты и/или готовые изделия одежды, обуви, аксессуаров)' },
-        { id: 12, name: 'Графический дизайн (плакат, календарь, открытка, упаковка и др.)' },
-        { id: 13, name: 'Иллюстрация (авторская графика, выполненная различными художественными материалами)' },
-        { id: 14, name: 'Арт-дизайн (проекты, соединяющие в себе принципы дизайн-проектирования и традиционного художественного творчества)' },
-        { id: 15, name: 'Декоративно-прикладное искусство (сохранение народных традиций, творческое осмысление, поиск современных форм и их интерпретация)' },
-        { id: 16, name: 'Туристический сувенир (современное прочтение традиционных ремесел и народных промыслов в сувенирной продукции)' },
-        { id: 17, name: 'Диджитал-арт и цифровая живопись (художественно-графические произведения, выполненные с помощью компьютерных технологий и специализированного программного обеспечения)' },
-        { id: 18, name: 'Промышленный дизайн (эскизы, макеты, действующие прототипы промышленных изделий: техника, оборудование, предметы интерьера и городской среды, игрушки, ювелирные изделия, сувенирная продукция и др.)' }
-      ]
-    }
-  }), []);
-
-  const [availableNominations, setAvailableNominations] = useState<Nomination[]>([]);
+  const [contests, setContests] = useState<Contest[]>([]);
+  const [availableNominations, setAvailableNominations] = useState<Contest[]>([]);
 
   const calculateAge = useCallback((birthDate: string): number => {
     const birth = new Date(birthDate);
@@ -138,8 +114,9 @@ export const ApplicationPage = () => {
   const validateAge = (birthDate: string): { isValid: boolean; message: string } => {
     if (!birthDate) return { isValid: false, message: t('Введите дату рождения') };
     const age = calculateAge(birthDate);
-    if (age < 10) return { isValid: false, message: t('Возраст должен быть от 10 лет') };
-    if (age > 35) return { isValid: false, message: t('Возраст должен быть до 35 лет') };
+    if (!contests.some(contest => age >= (contest.startAge ?? 0) && age <= (contest.endAge ?? 100))) {
+      return { isValid: false, message: t('Для этого возраста нет доступных номинаций') };
+    }
     return { isValid: true, message: '' };
   };
 
@@ -165,15 +142,9 @@ export const ApplicationPage = () => {
       return;
     }
     const age = calculateAge(birthDate);
-    const group = age >= 10 && age <= 13
-      ? nominationsByAge.junior
-      : age >= 14 && age <= 17
-        ? nominationsByAge.middle
-        : age >= 18 && age <= 35
-          ? nominationsByAge.senior
-          : null;
-    setAvailableNominations(group ? group.list : []);
-  }, [calculateAge, nominationsByAge]);
+    setAvailableNominations(contests.filter(contest =>
+      age >= (contest.startAge ?? 0) && age <= (contest.endAge ?? 100)));
+  }, [calculateAge, contests]);
 
   useEffect(() => {
     setDraftLoaded(false);
@@ -184,15 +155,10 @@ export const ApplicationPage = () => {
       const draft = JSON.parse(savedDraft) as StoredApplicationDraft;
       if (!draft.formData) return;
 
-      setFormData({ ...createEmptyFormData(), ...draft.formData });
+      setFormData(previous => ({ ...previous, ...draft.formData }));
       setIsTeam(Boolean(draft.isTeam));
       setIsCurator(Boolean(draft.isCurator));
       setMembers(Array.isArray(draft.members) ? draft.members : []);
-
-      const nominationBirthDate = draft.isCurator
-        ? draft.members?.[0]?.birthDate || ''
-        : draft.formData.birthDate;
-      updateNominationsByBirthDate(nominationBirthDate);
 
       const hasContent = Object.values(draft.formData).some(Boolean) || Boolean(draft.members?.length);
       if (hasContent) {
@@ -207,7 +173,22 @@ export const ApplicationPage = () => {
     } finally {
       setDraftLoaded(true);
     }
-  }, [draftStorageKey, t, updateNominationsByBirthDate]);
+  }, [draftStorageKey]);
+
+  useEffect(() => {
+    updateNominationsByBirthDate(isCurator ? members[0]?.birthDate || '' : formData.birthDate);
+  }, [formData.birthDate, isCurator, members, updateNominationsByBirthDate]);
+
+  useEffect(() => {
+    if (!contests.length || !draftLoaded) return;
+    setFormData(previous => {
+      const selected = availableNominations.find(nomination =>
+        String(nomination.conId) === previous.nomination);
+      if (selected) return previous;
+      const initial = availableNominations.find(nomination => String(nomination.conId) === contestId);
+      return { ...previous, nomination: initial ? String(initial.conId) : '' };
+    });
+  }, [availableNominations, contestId, contests.length, draftLoaded]);
 
   useEffect(() => {
     if (!draftLoaded) return;
@@ -218,7 +199,10 @@ export const ApplicationPage = () => {
       return;
     }
 
-    const draft: StoredApplicationDraft = { formData, isTeam, isCurator, members };
+    const draft: StoredApplicationDraft = {
+      formData: { ...formData, firstName: '', lastName: '', email: '', birthDate: '' },
+      isTeam, isCurator, members,
+    };
     localStorage.setItem(draftStorageKey, JSON.stringify(draft));
   }, [draftLoaded, draftStorageKey, formData, isCurator, isTeam, members]);
 
@@ -237,11 +221,19 @@ export const ApplicationPage = () => {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
-      if (uploadedFiles.length + files.length > 3) {
-        showNotification(t('Можно загрузить не более 3 файлов'), 'error');
+      if (uploadedFiles.length + files.length > 10) {
+        showNotification(t('Можно загрузить не более 10 файлов'), 'error');
         return;
       }
-      const newFiles = Array.from(files).filter(file => file.size <= 10 * 1024 * 1024);
+      const newFiles = Array.from(files).filter(file => file.size <= 20 * 1024 * 1024);
+      if (newFiles.length !== files.length) {
+        showNotification(t('Размер файла не должен превышать 20 МБ'), 'error');
+        return;
+      }
+      if (new Set([...uploadedFiles, ...newFiles].map(file => file.name)).size !== uploadedFiles.length + newFiles.length) {
+        showNotification(t('Файлы с одинаковыми именами нельзя прикрепить к одной заявке'), 'error');
+        return;
+      }
       setUploadedFiles(prev => [...prev, ...newFiles]);
       setErrors(prev => ({ ...prev, files: '' }));
     }
@@ -269,7 +261,7 @@ export const ApplicationPage = () => {
     const newErrors: Record<string, string> = {};
     let isValid = true;
 
-    const required = ['firstName', 'lastName', 'email', 'birthDate', 'city', 'nomination', 'workTitle', 'description'];
+    const required = ['city', 'nomination', 'workTitle', 'description'];
 
     required.forEach(field => {
       if (!formData[field as keyof typeof formData]) {
@@ -278,8 +270,8 @@ export const ApplicationPage = () => {
       }
     });
 
-    if (formData.email && !validateEmail(formData.email)) {
-      newErrors.email = t('Введите корректный email');
+    if (!availableNominations.some(nomination => String(nomination.conId) === formData.nomination)) {
+      newErrors.nomination = t('Выберите доступную номинацию');
       isValid = false;
     }
 
@@ -301,9 +293,10 @@ export const ApplicationPage = () => {
           newErrors[`member-${index}`] = t('Заполните ФИО и дату рождения участника');
           isValid = false;
         } else {
-          const memberAge = validateAge(member.birthDate);
-          if (!memberAge.isValid) {
-            newErrors[`member-${index}`] = memberAge.message;
+          const selected = contests.find(contest => String(contest.conId) === formData.nomination);
+          const age = calculateAge(member.birthDate);
+          if (selected && (age < (selected.startAge ?? 0) || age > (selected.endAge ?? 100))) {
+            newErrors[`member-${index}`] = t('Возраст участника не подходит для номинации');
             isValid = false;
           }
         }
@@ -313,8 +306,18 @@ export const ApplicationPage = () => {
     if (uploadedFiles.length === 0) {
       newErrors.files = t('Загрузите файл работы');
       isValid = false;
-    } else if (uploadedFiles.length > 3) {
-      newErrors.files = t('Можно загрузить не более 3 файлов');
+    } else if (uploadedFiles.length > 10) {
+      newErrors.files = t('Можно загрузить не более 10 файлов');
+      isValid = false;
+    }
+    if (uploadedFiles.reduce((total, file) => total + file.size, 0) > 20 * 1024 * 1024) {
+      newErrors.files = t('Общий размер файлов не должен превышать 20 МБ');
+      isValid = false;
+    }
+    const memberKeys = members.map(member =>
+      `${member.firstName.trim().toLowerCase()}|${member.lastName.trim().toLowerCase()}|${member.birthDate}`);
+    if (isTeam && new Set(memberKeys).size !== memberKeys.length) {
+      newErrors.members = t('В составе команды есть повторяющиеся участники');
       isValid = false;
     }
 
@@ -354,6 +357,7 @@ export const ApplicationPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
+    if (submitting) return;
 
     const token = localStorage.getItem('token');
     if (!token) {
@@ -361,15 +365,19 @@ export const ApplicationPage = () => {
       return;
     }
 
+    setSubmitting(true);
     const nominationName = availableNominations.find(
-      nomination => nomination.id === Number(formData.nomination)
+      nomination => nomination.conId === Number(formData.nomination)
     )?.name;
+    if (!nominationName) {
+      showNotification(t('Выберите доступную номинацию'), 'error');
+      setSubmitting(false);
+      return;
+    }
     const response = await applicationsApi.createApplication(
       {
         name: formData.workTitle,
-        description: nominationName
-          ? `${t('Номинация:')} ${t(nominationName)}\n\n${formData.description}`
-          : formData.description,
+        description: formData.description,
         city: formData.city,
         organization: formData.organization || undefined,
         mentorName: formData.mentorName || undefined,
@@ -381,7 +389,7 @@ export const ApplicationPage = () => {
         isTeam,
         isCurator: isTeam && isCurator,
       },
-      contestId || '',
+      formData.nomination,
       token
     );
 
@@ -391,28 +399,38 @@ export const ApplicationPage = () => {
         ? t('Приём заявок закрыт. Новые заявки временно не принимаются.')
         : response.error?.message || t('Не удалось создать заявку');
       showNotification(message, 'error');
+      setSubmitting(false);
       return;
     }
 
     showNotification(t('Заявка создана. Загружаем файлы...'), 'success');
     const filesUploaded = await uploadFiles(appId);
     if (!filesUploaded) {
-      await applicationsApi.deleteApplication(appId, token);
-      showNotification(t('Файл не загружен, черновик заявки удалён. Проверьте формат и повторите.'), 'error');
+      const cleanup = await applicationsApi.deleteApplication(appId, token);
+      showNotification(cleanup.status === 204
+        ? t('Загрузка не завершена. Заявка удалена, попробуйте снова.')
+        : t('Загрузка не завершена. Заявка сохранена в личном кабинете — проверьте её перед повторной подачей.'), 'error');
+      setSubmitting(false);
       return;
     }
 
     showNotification(t('Заявка отправлена!'), 'success');
     localStorage.removeItem(draftStorageKey);
+    setSubmitting(false);
     setTimeout(() => navigate('/profile'), 1500);
   };
 
   const handleClear = () => {
     localStorage.removeItem(draftStorageKey);
-    setFormData(createEmptyFormData());
+    setFormData(previous => ({
+      ...createEmptyFormData(),
+      firstName: previous.firstName,
+      lastName: previous.lastName,
+      email: previous.email,
+      birthDate: previous.birthDate,
+    }));
     setUploadedFiles([]);
     setErrors({});
-    setAvailableNominations([]);
     setIsTeam(false);
     setIsCurator(false);
     setMembers([]);
@@ -448,6 +466,7 @@ export const ApplicationPage = () => {
                     onBlur={() => validateForm()}
                     className={`${css.formControl} ${errors.firstName ? css.error : ''}`}
                     maxLength={50}
+                    readOnly
                   />
                   {errors.firstName && <div className={css.errorMessage}>{errors.firstName}</div>}
                 </div>
@@ -464,6 +483,7 @@ export const ApplicationPage = () => {
                     onBlur={() => validateForm()}
                     className={`${css.formControl} ${errors.lastName ? css.error : ''}`}
                     maxLength={50}
+                    readOnly
                   />
                   {errors.lastName && <div className={css.errorMessage}>{errors.lastName}</div>}
                 </div>
@@ -482,6 +502,7 @@ export const ApplicationPage = () => {
                     onBlur={() => validateForm()}
                     className={`${css.formControl} ${errors.email ? css.error : ''}`}
                     maxLength={255}
+                    readOnly
                   />
                   {errors.email && <div className={css.errorMessage}>{errors.email}</div>}
                 </div>
@@ -497,6 +518,7 @@ export const ApplicationPage = () => {
                     onChange={handleBirthDateChange}
                     onBlur={() => validateForm()}
                     className={`${css.formControl} ${errors.birthDate ? css.error : ''}`}
+                    readOnly
                   />
                   {errors.birthDate && <div className={css.errorMessage}>{errors.birthDate}</div>}
                 </div>
@@ -557,7 +579,7 @@ export const ApplicationPage = () => {
                     }} />
                     <span>{t('Я являюсь куратором команды')}</span>
                   </label>
-                  <p className={css.fileUploadHint}>{t('Укажите всех участников команды. Данные заявителя заполняются в личной части формы.')}</p>
+                  <p className={css.fileUploadHint}>{t('Заявкой управляет ваш аккаунт. Если вы участник команды, добавьте остальных участников; если куратор — всех участников.')}</p>
                   {members.map((member, index) => (
                     <div key={index} className={css.memberCard}>
                       <div className={css.formRow}>
@@ -617,7 +639,7 @@ export const ApplicationPage = () => {
                       : t('Выберите номинацию')}
                   </option>
                   {availableNominations.map(nom => (
-                    <option key={nom.id} value={nom.id}>{t(nom.name)}</option>
+                    <option key={nom.conId} value={nom.conId}>{t(nom.name)}</option>
                   ))}
                 </select>
                 {errors.nomination && <div className={css.errorMessage}>{errors.nomination}</div>}
@@ -708,7 +730,7 @@ export const ApplicationPage = () => {
                 />
                 <div className={css.fileUploadIcon}>📁</div>
                 <div className={css.fileUploadText}>{t('Нажмите для выбора файлов')}</div>
-                <div className={css.fileUploadHint}>{t('PNG, JPG, TIFF до 10 МБ')}</div>
+                <div className={css.fileUploadHint}>{t('PNG, JPG, TIFF до 20 МБ; всего до 10 файлов и 20 МБ на заявку')}</div>
               </div>
               {errors.files && <div className={css.errorMessage}>{errors.files}</div>}
             </div>
@@ -717,7 +739,7 @@ export const ApplicationPage = () => {
               <button type="button" className={`${css.btn} ${css.btnSecondary}`} onClick={handleClear} disabled={isUploading}>
                 {t('Очистить')}
               </button>
-              <button type="submit" className={`${css.btn} ${css.btnPrimary}`} disabled={isUploading}>
+              <button type="submit" className={`${css.btn} ${css.btnPrimary}`} disabled={isUploading || submitting}>
                 {isUploading ? t('Загрузка...') : t('Отправить заявку')}
               </button>
             </div>

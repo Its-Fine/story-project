@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { authApi } from '../api/auth';
+import { landingPath } from '../utils/access';
 
 interface AuthContextValue {
   role: string | null;
@@ -60,7 +61,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       setRole(nextRole);
       setPermissions(response.data?.permissions ?? []);
-      return nextRole;
+      return landingPath(response.data?.permissions ?? []);
     } catch (error) {
       localStorage.removeItem('token');
       setRole(null);

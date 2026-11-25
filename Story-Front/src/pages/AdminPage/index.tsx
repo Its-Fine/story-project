@@ -62,7 +62,8 @@ const formatSize = (bytes: number, language: 'ru' | 'en') => {
 
 export const AdminPage = () => {
   const navigate = useNavigate();
-  const { signOut } = useAuth();
+  const { signOut, permissions } = useAuth();
+  const can = (permission: string) => permissions.includes(permission);
   const { t, language } = useLanguage();
   const locale = language === 'en' ? 'en-US' : 'ru-RU';
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
@@ -112,45 +113,37 @@ export const AdminPage = () => {
     setLoading(true);
     setError('');
     try {
-      const results = await Promise.all([
-        adminApi.getUsersCount(token),
-        adminApi.getApplicationsCount(token),
-        adminApi.getEventStatus(token),
-        adminApi.getUsers(token),
-        adminApi.getApplications(token),
-        adminApi.getContests(token),
-        adminApi.getRoles(token),
-        adminApi.getPermissions(token),
+      const [usersTotal, applicationsTotal, event, usersResult, applicationsResult,
+        contestsResult, rolesResult, permissionsResult] = await Promise.all([
+        can('user:manage') ? adminApi.getUsersCount(token) : Promise.resolve(null),
+        can('application:read:any') ? adminApi.getApplicationsCount(token) : Promise.resolve(null),
+        can('event:read') ? adminApi.getEventStatus(token) : Promise.resolve(null),
+        can('user:manage') ? adminApi.getUsers(token) : Promise.resolve(null),
+        can('application:read:any') ? adminApi.getApplications(token) : Promise.resolve(null),
+        can('contest:manage') ? adminApi.getContests(token) : Promise.resolve(null),
+        can('role:manage') ? adminApi.getRoles(token) : Promise.resolve(null),
+        can('role:manage') ? adminApi.getPermissions(token) : Promise.resolve(null),
       ]);
-      const failed = results.find(result => result.error || result.status >= 400);
+      const failed = [usersTotal, applicationsTotal, event, usersResult, applicationsResult,
+        contestsResult, rolesResult, permissionsResult].find(result => result && (result.error || result.status >= 400));
       if (failed) {
         throw new Error(failed.error?.message || t('Не удалось загрузить данные панели'));
       }
 
-      const [
-        usersTotal,
-        applicationsTotal,
-        event,
-        usersResult,
-        applicationsResult,
-        contestsResult,
-        rolesResult,
-        permissionsResult,
-      ] = results;
-      setUserCount(usersTotal.data ?? 0);
-      setApplicationCount(applicationsTotal.data ?? 0);
-      setEventClosed(Boolean(event.data?.close));
-      setUsers(usersResult.data ?? []);
-      setApplications(applicationsResult.data ?? []);
-      setContests(contestsResult.data ?? []);
-      setRoles(rolesResult.data ?? []);
-      setPermissions(permissionsResult.data ?? []);
+      setUserCount(usersTotal?.data ?? 0);
+      setApplicationCount(applicationsTotal?.data ?? 0);
+      setEventClosed(Boolean(event?.data?.close));
+      setUsers(usersResult?.data ?? []);
+      setApplications(applicationsResult?.data ?? []);
+      setContests(contestsResult?.data ?? []);
+      setRoles(rolesResult?.data ?? []);
+      setPermissions(permissionsResult?.data ?? []);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : t('Ошибка загрузки панели администратора'));
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [t, permissions]);
 
   useEffect(() => {
     void loadDashboard();
@@ -351,7 +344,7 @@ export const AdminPage = () => {
     }
   };
 
-  const changeUserRole = async (user: AdminUser, roleName: string) => {
+  const changeUserRoles = async (user: AdminUser, rolesToSet: string[]) => {
     const token = getToken();
     const currentPassword = requireAdminPassword();
     if (!token || !currentPassword || busy) return;
@@ -360,12 +353,12 @@ export const AdminPage = () => {
     setError('');
     setNotice('');
     try {
-      const result = await adminApi.setUserRoles(user.userId, [roleName], currentPassword, token);
+      const result = await adminApi.setUserRoles(user.userId, rolesToSet, currentPassword, token);
       if (result.error || result.status >= 400) {
         throw new Error(result.error?.message || t('Не удалось изменить роль пользователя'));
       }
       setUsers(previous => previous.map(item => item.userId === user.userId
-        ? { ...item, role: roleName, roles: [roleName] }
+        ? { ...item, role: rolesToSet[0], roles: rolesToSet }
         : item));
       setAdminPassword('');
       setNotice(t('Роль пользователя обновлена.'));
@@ -560,7 +553,7 @@ export const AdminPage = () => {
             <p className={css.subtitle}>{t('Участники, заявки, работы и настройки приёма.')}</p>
           </div>
           <div className={css.heroActions}>
-            <Button variant="secondary" onClick={downloadReport} disabled={busy}>{t('Скачать Excel-отчёт')}</Button>
+            {can('report:export') && <Button variant="secondary" onClick={downloadReport} disabled={busy}>{t('Скачать Excel-отчёт')}</Button>}
             <Button variant="secondary" onClick={handleLogout} disabled={loggingOut}>
               {loggingOut ? t('Выход...') : t('Выйти')}
             </Button>
@@ -582,18 +575,18 @@ export const AdminPage = () => {
             <strong className={`${css.eventState} ${eventClosed ? css.closed : css.open}`}>
               {loading ? '…' : eventClosed ? t('Закрыт') : t('Открыт')}
             </strong>
-            <button className={css.textButton} onClick={toggleEvent} disabled={loading || busy}>
+            {can('event:manage') && <button className={css.textButton} onClick={toggleEvent} disabled={loading || busy}>
               {eventClosed ? t('Открыть приём') : t('Закрыть приём')}
-            </button>
+            </button>}
           </article>
         </section>
 
         <nav className={css.tabs} aria-label={t('Разделы панели')}>
           <button className={activeTab === 'overview' ? css.activeTab : ''} onClick={() => setActiveTab('overview')}>{t('Обзор')}</button>
-          <button className={activeTab === 'applications' ? css.activeTab : ''} onClick={() => setActiveTab('applications')}>{t('Заявки')}</button>
-          <button className={activeTab === 'contests' ? css.activeTab : ''} onClick={() => setActiveTab('contests')}>{t('Номинации')}</button>
-          <button className={activeTab === 'users' ? css.activeTab : ''} onClick={() => setActiveTab('users')}>{t('Участники')}</button>
-          <button className={activeTab === 'access' ? css.activeTab : ''} onClick={() => setActiveTab('access')}>{t('Роли и доступ')}</button>
+          {can('application:read:any') && <button className={activeTab === 'applications' ? css.activeTab : ''} onClick={() => setActiveTab('applications')}>{t('Заявки')}</button>}
+          {can('contest:manage') && <button className={activeTab === 'contests' ? css.activeTab : ''} onClick={() => setActiveTab('contests')}>{t('Номинации')}</button>}
+          {can('user:manage') && <button className={activeTab === 'users' ? css.activeTab : ''} onClick={() => setActiveTab('users')}>{t('Участники')}</button>}
+          {can('role:manage') && <button className={activeTab === 'access' ? css.activeTab : ''} onClick={() => setActiveTab('access')}>{t('Роли и доступ')}</button>}
           <button className={css.refreshButton} onClick={() => void loadDashboard()} disabled={loading || busy}>{t('Обновить')}</button>
         </nav>
 
@@ -623,7 +616,7 @@ export const AdminPage = () => {
           </section>
         )}
 
-        {activeTab === 'applications' && (
+        {activeTab === 'applications' && can('application:read:any') && (
           <section className={css.panel}>
             <div className={css.panelHeading}>
               <div><h2>{t('Заявки участников')}</h2><p>{t('Для заявки можно посмотреть работы и скачать файлы.')}</p></div>
@@ -644,9 +637,9 @@ export const AdminPage = () => {
                         <span className={`${css.statusBadge} ${css[`status${application.status}`]}`}>{t(
                           application.status === 'ACCEPTED' ? 'Принята' : application.status === 'REJECTED' ? 'Отклонена' : 'На рассмотрении'
                         )}</span>
-                        <button className={css.outlineButton} onClick={() => void toggleWorks(application.appId)} disabled={busy}>
+                        {can('work:read:any') && <button className={css.outlineButton} onClick={() => void toggleWorks(application.appId)} disabled={busy}>
                           {expandedApplicationId === application.appId ? t('Скрыть работы') : `${t('Работы')} (${application.worksCount})`}
-                        </button>
+                        </button>}
                       </div>
                     </div>
                     <div className={css.applicationMeta}>
@@ -659,12 +652,12 @@ export const AdminPage = () => {
                     {application.rejectionReason && (
                       <p className={css.rejectionReason}><strong>{t('Причина отказа:')}</strong> {application.rejectionReason}</p>
                     )}
-                    <div className={css.moderationActions}>
+                    {can('application:moderate') && <div className={css.moderationActions}>
                       <button onClick={() => void changeApplicationStatus(application, 'ACCEPTED')} disabled={busy || application.status === 'ACCEPTED'}>{t('Принять')}</button>
                       <button onClick={() => void changeApplicationStatus(application, 'REJECTED')} disabled={busy || application.status === 'REJECTED'}>{t('Отклонить')}</button>
                       <button onClick={() => void changeApplicationStatus(application, 'PENDING')} disabled={busy || application.status === 'PENDING'}>{t('Вернуть на рассмотрение')}</button>
-                    </div>
-                    {expandedApplicationId === application.appId && (
+                    </div>}
+                    {can('work:read:any') && expandedApplicationId === application.appId && (
                       <div className={css.worksList}>
                         {(worksByApplication[application.appId] ?? []).length === 0 ? (
                           <span className={css.muted}>{busy ? t('Загрузка файлов…') : t('В этой заявке нет файлов.')}</span>
@@ -675,7 +668,7 @@ export const AdminPage = () => {
                               <span>{formatSize(work.fileSize, language)} · {work.broken ? t('Файл повреждён') : t('Доступен')} · {work.isRated ? `${t('Оценка')}: ${work.rate}/100` : t('Без оценки')}</span>
                             </div>
                             <div className={css.workActions}>
-                              <input
+                              {can('work:rate') && <><input
                                 type="number"
                                 min="0"
                                 max="100"
@@ -686,7 +679,7 @@ export const AdminPage = () => {
                                 disabled={busy || work.broken}
                               />
                               <button className={css.textButton} onClick={() => void saveWorkRating(application.appId, work)} disabled={busy || work.broken}>{t('Сохранить оценку')}</button>
-                              {work.isRated && <button className={css.textButton} onClick={() => void clearWorkRating(application.appId, work)} disabled={busy}>{t('Снять оценку')}</button>}
+                              {work.isRated && <button className={css.textButton} onClick={() => void clearWorkRating(application.appId, work)} disabled={busy}>{t('Снять оценку')}</button>}</>}
                               <button className={css.textButton} onClick={() => void downloadFile(work)} disabled={busy || work.broken}>{t('Скачать')}</button>
                             </div>
                           </div>
@@ -700,7 +693,7 @@ export const AdminPage = () => {
           </section>
         )}
 
-        {activeTab === 'contests' && (
+        {activeTab === 'contests' && can('contest:manage') && (
           <section className={css.panel}>
             <div className={css.panelHeading}>
               <div>
@@ -777,7 +770,7 @@ export const AdminPage = () => {
           </section>
         )}
 
-        {activeTab === 'access' && (
+        {activeTab === 'access' && can('role:manage') && (
           <section className={css.panel}>
             <div className={css.panelHeading}>
               <div>
@@ -851,7 +844,7 @@ export const AdminPage = () => {
           </section>
         )}
 
-        {activeTab === 'users' && (
+        {activeTab === 'users' && can('user:manage') && (
           <section className={css.panel}>
             <div className={css.panelHeading}>
               <div><h2>{t('Участники')}</h2><p>{t('Поиск по email, роль и количество заявок.')}</p></div>
@@ -886,21 +879,30 @@ export const AdminPage = () => {
                       <strong>{user.firstName} {user.lastName}</strong>
                       <span>{user.email}</span>
                     </div>
-                    <span className={`${css.roleBadge} ${user.role === 'ADMIN' ? css.adminBadge : ''}`}>{t(getRoleLabel(user.role))}</span>
+                    <span className={`${css.roleBadge} ${(user.roles ?? [user.role]).includes('ADMIN') ? css.adminBadge : ''}`}>
+                      {(user.roles ?? [user.role]).map(roleName => t(getRoleLabel(roleName))).join(', ')}
+                    </span>
                     {user.banned && <span className={css.bannedBadge}>{t('Заблокирован')}</span>}
                     <span className={css.userApplications}>{user.applicationsCount} {t('заявок')}</span>
                     <div className={css.userActions}>
                       <button className={css.textButton} onClick={() => void toggleUserBanned(user)} disabled={busy}>
                         {user.banned ? t('Разблокировать') : t('Заблокировать')}
                       </button>
-                      <select
-                        value={user.role}
-                        onChange={event => void changeUserRole(user, event.target.value)}
-                        disabled={busy}
-                        aria-label={t('Роль пользователя')}
-                      >
-                        {roles.map(role => <option key={role.name} value={role.name}>{role.name}</option>)}
-                      </select>
+                      {can('role:manage') && <div aria-label={t('Роли пользователя')}>
+                        {roles.map(role => (
+                          <label key={role.name}>
+                            <input type="checkbox" checked={(user.roles ?? [user.role]).includes(role.name)} disabled={busy}
+                              onChange={event => {
+                                const current = user.roles ?? [user.role];
+                                const next = event.target.checked
+                                  ? [...current, role.name]
+                                  : current.filter(item => item !== role.name);
+                                if (next.length) void changeUserRoles(user, next);
+                              }} />
+                            {role.name}
+                          </label>
+                        ))}
+                      </div>}
                     </div>
                   </article>
                 ))}

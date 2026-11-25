@@ -83,9 +83,9 @@ export const SignUpForm = ({ showNotification }: SignUpFormProps) => {
       });
 
       if ((response.status === 200 || response.status === 201) && response.data?.access_token) {
-        const role = await signIn(response.data.access_token);
+        const path = await signIn(response.data.access_token);
         showNotification(t('Регистрация прошла успешно!'), 'success');
-        navigate(role === 'ADMIN' ? '/admin' : '/profile', { replace: true });
+        navigate(path, { replace: true });
         return;
       }
 

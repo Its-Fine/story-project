@@ -5,12 +5,13 @@ import { SignInForm } from '../../components/Forms/SignInForm';
 import { SignUpForm } from '../../components/Forms/SignUpForm';
 import { Notification } from '../../components/UI/Notification';
 import { useAuth } from '../../contexts/AuthContext';
+import { landingPath } from '../../utils/access';
 import { useLanguage } from '../../contexts/LanguageContext';
 import css from './index.module.scss';
 
 export const MainPage = () => {
   const navigate = useNavigate();
-  const { role } = useAuth();
+  const { role, permissions } = useAuth();
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
   const [notification, setNotification] = useState<{
@@ -18,8 +19,8 @@ export const MainPage = () => {
   }>({ show: false, message: '', type: 'success' });
 
   useEffect(() => {
-    if (role) navigate(role === 'ADMIN' ? '/admin' : '/profile', { replace: true });
-  }, [role, navigate]);
+    if (role) navigate(landingPath(permissions), { replace: true });
+  }, [role, permissions, navigate]);
 
   useEffect(() => {
     const handleTabChange = (event: Event) => {
